@@ -34,8 +34,8 @@ echo -e "d\n2\nw" | fdisk /dev/sdb
 echo -e "n\np\n2\n\n\nw" | fdisk /dev/sdb
 ```
 
-Create a new, encrypted partition in its place. In this example we will use `aes-adiantum` since it is much faster on targets that lack hardware AES acceleration. Ensure that the image's kernel (>= 5, must include .ko) and cryptsetup (>= 2.0.6) support it!
-> IMPORTANT: By default cryptsetup will benchmark the system that is creating the encrypted partition and find suitable memory difficulty. This is usually half of the maximum available RAM, and since the calculation is done on the host, it is very likely it will exceed the Raspberry Pi's maximum RAM and make it impossible to unlock. To fix this, set the `--pbkdf-memory` argument to something less than the Pi's maximum RAM.
+Create a new, encrypted partition in its place. In this example we will use `aes-adiantum` since it is much faster on targets that lack hardware AES acceleration. Ensure that both the host's and Pi's kernel (>= 5, must include .ko) and cryptsetup (>= 2.0.6) support it!
+> IMPORTANT: By default cryptsetup will benchmark the system that is creating the encrypted partition to find suitable memory difficulty. This is usually half of the maximum available RAM, and since the calculation is done on the host, it is very likely to exceed the Raspberry Pi's maximum RAM and make it impossible to unlock the partition. To prevent this, set the `--pbkdf-memory` argument to something less than the Pi's maximum RAM.
 ```sh
 cryptsetup luksFormat -c xchacha12,aes-adiantum-plain64 --pbkdf-memory 512000 /dev/sdb2
 cryptsetup open /dev/sdb2 crypted
