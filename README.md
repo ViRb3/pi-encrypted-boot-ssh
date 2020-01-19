@@ -50,7 +50,8 @@ kpartx -ar "ubuntu-19.10.1-preinstalled-server-arm64+raspi3.img"
 mkdir -p /mnt/original/
 mount /dev/mapper/loop0p2 /mnt/original/
 ```
-Copy its contents to the new, empty, encrypted root partition. You could alternatively `dd` the raw partition, but `rsync` is faster
+
+Copy its contents to the new, empty, encrypted root partition. You could alternatively `dd` the raw partition, but `rsync` is faster.
 ```sh
 rsync -avh /mnt/original/* /mnt/chroot/
 ```
@@ -80,7 +81,7 @@ apt update
 apt install -y busybox cryptsetup dropbear-initramfs
 ```
 
-If the chroot cannot resolve hostnames, you might have a symlinked `resolvconf` that is invalid in the chroot context. To work around this, back it up and create a simple nameserver replacement
+If the chroot cannot resolve hostnames, you might have a symlinked `resolvconf` that is invalid in the chroot context. To work around this, back it up and create a simple nameserver replacement.
 ```sh
 mv /etc/resolv.conf /etc/resolv.conf.bak
 echo "nameserver 1.1.1.1" > /etc/resolv.conf
@@ -93,20 +94,20 @@ Run `blkid` and note the following
 /dev/mapper/crypted: UUID="5e5f88a1-8aae-4c1a-a9a6-d8a7adcd2db9" TYPE="ext4"
 ```
 
-Edit `/etc/fstab` and replace the root entry with your `decrypted` (virtual) partition. In this example - `/dev/mapper/crypted`, NOT `/dev/sdb2`
+Edit `/etc/fstab` and replace the root entry with your `decrypted` (virtual) partition. In this example - `/dev/mapper/crypted`, NOT `/dev/sdb2`.
 ```sh
 /dev/mapper/crypted  /               ext4  defaults  0 0
 LABEL=system-boot    /boot/firmware  vfat  defaults  0 1
 ```
 
-Edit `/etc/crypttab` and add an entry with your `encrypted` (raw) partition. In this example - `/dev/sdb2`
+Edit `/etc/crypttab` and add an entry with your `encrypted` (raw) partition. In this example - `/dev/sdb2`.
 > IMPORTANT: Since this name will likely be different now compared to what will be on the Raspberry Pi, make sure to use the actual device name that will be found on the Pi. Cryptsetup will try to play smart and resolve any UUID to an actual device name at _build_ time, so it is not an option.
 ```sh
 crypted  /dev/mmcblk0p2  none  luks
 ```
 
 Edit `/boot/cmdline.txt` and update the root entry.
-On Ubunu Server this is `nobtcmd.txt` or `btcmd.txt`, depending on the operating mode
+On Ubunu Server this is `nobtcmd.txt` or `btcmd.txt`, depending on the operating mode.
 ```sh
 root=/dev/mapper/crypted cryptdevice=/dev/mmcblk0p2:crypted rootfstype=ext4
 ```
@@ -157,7 +158,7 @@ umount /mnt/chroot/dev/pts
 umount /mnt/chroot/dev
 umount /mnt/chroot
 cryptsetup close crypted
-kpartx -d ubuntu-19.10.1-preinstalled-server-arm64+raspi3.img
+kpartx -d "ubuntu-19.10.1-preinstalled-server-arm64+raspi3.img"
 ```
 
 ## On the Raspberry Pi
