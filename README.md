@@ -19,6 +19,7 @@ The procedure described below can also be performed to an image file directly an
     - [Cleanup](#cleanup)
   - [On the host](#on-the-host-1)
   - [On the Raspberry Pi](#on-the-raspberry-pi)
+  - [Avoiding SSH key collisions](#avoiding-ssh-key-collisions)
   - [Resources](#resources)
 
 ## On the host
@@ -164,8 +165,23 @@ kpartx -d "ubuntu-19.10.1-preinstalled-server-arm64+raspi3.img"
 ## On the Raspberry Pi
 Boot the Raspberry Pi with the new SD card. It will obtain a new IP address from the DHCP server and start listening for SSH connections. To decrypt the root partition and continue boot, from any shell, simply type `cryptroot-unlock`.
 
+## Avoiding SSH key collisions
+To avoid host key collisions you can configure a separate trusted hosts store in the `~/.ssh/config` of your client:
+```ssh
+Host box
+	Hostname 192.168.0.30
+	User root
+
+Host box-initramfs
+	Hostname 192.168.0.30
+	User root
+	UserKnownHostsFile ~/.ssh/known_hosts.initramfs
+```
+
 ## Resources
 - https://www.kali.org/docs/arm/raspberry-pi-with-luks-disk-encryption/
 - https://wiki.archlinux.org/index.php/Dm-crypt/Specialties
 - https://wiki.gentoo.org/wiki/Custom_Initramfs
 - https://www.raspberrypi.org/forums/viewtopic.php?t=252980
+- https://thej6s.com/articles/2019-03-05__decrypting-boot-drives-remotely/
+- https://www.pbworks.net/ubuntu-guide-dropbear-ssh-server-to-unlock-luks-encrypted-pc/
