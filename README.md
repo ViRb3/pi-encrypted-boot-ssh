@@ -56,7 +56,7 @@ Copy its contents to the new, empty, encrypted root partition. You could alterna
 rsync -avh /mnt/original/* /mnt/chroot/
 ```
 
-Set up a chroot by mounting the boot partition and required virtual filesystems from the host
+Set up a [chroot](https://linux.die.net/man/1/chroot) by mounting the boot partition and required virtual filesystems from the host
 ```sh
 mkdir -p /mnt/chroot/boot/
 mount /dev/sdb1 /mnt/chroot/boot/
@@ -66,7 +66,7 @@ mount -o bind /dev /mnt/chroot/dev/
 mount -o bind /dev/pts /mnt/chroot/dev/pts/
 ```
 
-Prepare and enter the chroot. Depending on the image architecture you may have to use different qemu binaries.
+Prepare and enter the chroot. Depending on the image architecture you may have to use different [qemu](https://www.qemu.org/) binaries.
 ```sh
 cp /usr/bin/qemu-arm-static /mnt/chroot/usr/bin/
 cp /usr/bin/qemu-aarch64-static /mnt/chroot/usr/bin/
@@ -132,7 +132,7 @@ Build the new initramfs, overwriting the old one
 mkinitramfs -o /boot/initrd.img "5.3.0-1014-raspi2"
 ```
 
-If your system is not configured to use an initramfs (e.g. there was nothing to overwrite), add an entry
+If your system is not configured to use an initramfs (e.g. if there was nothing to overwrite), add an entry to your boot config
 ```sh
 echo initramfs initrd.img >> /boot/config.txt
 ```
@@ -162,7 +162,7 @@ kpartx -d "ubuntu-19.10.1-preinstalled-server-arm64+raspi3.img"
 ```
 
 ## On the Raspberry Pi
-Boot the Raspberry Pi with thew new SD card. It will obtain a new IP address from the DHCP server and start listening for SSH connections. To decrypt the root partition and continue boot, from any shell, simply type `cryptroot-unlock`.
+Boot the Raspberry Pi with the new SD card. It will obtain a new IP address from the DHCP server and start listening for SSH connections. To decrypt the root partition and continue boot, from any shell, simply type `cryptroot-unlock`.
 
 ## Resources
 - https://www.kali.org/docs/arm/raspberry-pi-with-luks-disk-encryption/
