@@ -1,5 +1,5 @@
 # Raspberry Pi Encrypted Boot with SSH
-> Tested on [Raspberry Pi 3B / 4B](https://www.raspberrypi.org/products/raspberry-pi-3-model-b/) | [Ubuntu Server 19.10.1](https://ubuntu.com/download/raspberry-pi)
+> Tested on Raspberry Pi [3B](https://www.raspberrypi.org/products/raspberry-pi-3-model-b/) & [4B](https://www.raspberrypi.org/products/raspberry-pi-4-model-b/) with [Ubuntu Server 19.10.1](https://ubuntu.com/download/raspberry-pi)
 
 ## Introduction
 This guide will show you how to encrypt your Raspberry Pi's root partition and set up an [initramfs](https://en.wikipedia.org/wiki/Initial_ramdisk) that will prompt for the password, decrypt the partition and gracefully resume boot. You will also learn how to enable SSH during this pre-boot stage, allowing you to unlock the partition remotely.
