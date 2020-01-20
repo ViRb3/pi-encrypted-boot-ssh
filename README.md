@@ -10,6 +10,7 @@ While the steps are written for the Raspberry Pi, they should be easily transfer
 - [Raspberry Pi Encrypted Boot with SSH](#raspberry-pi-encrypted-boot-with-ssh)
   - [Introduction](#introduction)
   - [Table of Content](#table-of-content)
+  - [Requirements](#requirements)
   - [On the host](#on-the-host)
   - [In the chroot](#in-the-chroot)
     - [Prepare](#prepare)
@@ -22,6 +23,14 @@ While the steps are written for the Raspberry Pi, they should be easily transfer
   - [On the Raspberry Pi](#on-the-raspberry-pi)
   - [Avoiding SSH key collisions](#avoiding-ssh-key-collisions)
   - [Resources](#resources)
+
+## Requirements
+- Raspberry Pi
+- OS image
+- SD card
+  - make sure there is enough space for the OS
+
+While this guide operates directly on the SD card, you can easily work on an image file instead and then flash the result to an SD card. This can be done by creating _two_ copies of the initial OS image file and mounting both via [kpartx](https://linux.die.net/man/8/kpartx). One will be readonly and used to fill the new, empty, encrypted root partition of the other.
 
 ## On the host
 Install dependencies. Assuming the host is `x86-64` and the Raspberry Pi is `aarch64`/`arm`, emulation will be required.
