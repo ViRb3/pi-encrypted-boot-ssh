@@ -33,7 +33,7 @@ While the steps are written for the Raspberry Pi, they should be easily transfer
 While this guide operates directly on the SD card, you can easily work on an image file instead and then flash the result to an SD card. This can be done by creating _two_ copies of the initial OS image file and mounting both via [kpartx](https://linux.die.net/man/8/kpartx). One will be readonly and used to fill the new, empty, encrypted root partition of the other.
 
 ## On the host
-Install dependencies. Assuming the host is `x86-64` and the Raspberry Pi is `aarch64`/`arm`, emulation will be required.
+Assuming the host is x86-64 and the Raspberry Pi is aarch64/arm, [qemu](https://www.qemu.org/) wil be required - install it
 ```sh
 apt update
 apt install -y qemu-user-static
@@ -46,7 +46,7 @@ echo -e "n\np\n2\n\n\nw" | fdisk /dev/sdb
 ```
 
 Create a new, encrypted partition in its place. In this example we will use [aes-adiantum](https://github.com/google/adiantum) since it is much faster on targets that lack hardware AES acceleration. Ensure that both the host's and Pi's kernel (>= [5.0.0](https://kernelnewbies.org/Linux_5.0#Adiantum_file_system_encryption_for_low_power_devices), must include .ko) and [cryptsetup](https://linux.die.net/man/8/cryptsetup) (>= [2.0.6](https://mirrors.edge.kernel.org/pub/linux/utils/cryptsetup/v2.0/v2.0.6-ReleaseNotes)) support it!
-> IMPORTANT: By default cryptsetup will benchmark the system that is creating the encrypted partition to find suitable memory difficulty. This is usually half of the maximum available RAM, and since the calculation is done on the host, it is very likely to exceed the Raspberry Pi's maximum RAM and make it impossible to unlock the partition. To prevent this, set the [--pbkdf-memory](https://linux.die.net/man/8/cryptsetup) argument to something less than the Pi's maximum RAM.
+> IMPORTANT: By default cryptsetup will benchmark the system that is creating the encrypted partition to find suitable memory difficulty. This is usually half of the machine's available RAM. Since the calculation is is done on the host, it is very likely to exceed the Raspberry Pi's maximum RAM and make it impossible to unlock the partition. To prevent this, set the [--pbkdf-memory](https://linux.die.net/man/8/cryptsetup) argument to something less than the Pi's maximum RAM.
 ```sh
 cryptsetup luksFormat -c xchacha20,aes-adiantum-plain64 --pbkdf-memory 512000 /dev/sdb2
 cryptsetup open /dev/sdb2 crypted
@@ -77,7 +77,7 @@ mount -o bind /dev /mnt/chroot/dev/
 mount -o bind /dev/pts /mnt/chroot/dev/pts/
 ```
 
-Prepare and enter the chroot. Depending on the image architecture you may have to use different [qemu](https://www.qemu.org/) binaries.
+Prepare and enter the chroot. Depending on the image architecture you may have to use different qemu binaries.
 ```sh
 cp /usr/bin/qemu-arm-static /mnt/chroot/usr/bin/
 cp /usr/bin/qemu-aarch64-static /mnt/chroot/usr/bin/
@@ -112,7 +112,7 @@ LABEL=system-boot    /boot/firmware  vfat  defaults  0 1
 ```
 
 Edit [/etc/crypttab](https://linux.die.net/man/5/crypttab) and add an entry with your `encrypted` (raw) partition. In this example - `/dev/sdb2`.
-> IMPORTANT: Since this name will likely be different now compared to what will be on the Raspberry Pi, make sure to use the actual device name that will be found on the Pi. Cryptsetup will try to play smart and resolve any UUID to an actual device name at _build_ time, so it is not an option.
+> IMPORTANT: Since the device name will likely be different on the Raspberry Pi, make sure to use the name that will be found on the Pi. Do not use UUIDs since cryptsetup will try to play smart and resolve them to a device name at _build_ time.
 ```sh
 crypted  /dev/mmcblk0p2  none  luks
 ```
@@ -149,11 +149,11 @@ echo initramfs initrd.img >> /boot/config.txt
 ```
 
 ### Cleanup
-Revert any changes if applicable
+Revert any changes you have made before
 ```sh
 mv /etc/resolv.conf.bak /etc/resolv.conf
 ```
-Sync all changes and exit the chroot
+Sync and exit the chroot
 ```sh
 sync
 exit
@@ -173,7 +173,7 @@ kpartx -d "ubuntu-19.10.1-preinstalled-server-arm64+raspi3.img"
 ```
 
 ## On the Raspberry Pi
-Boot the Raspberry Pi with the new SD card. It will obtain a new IP address from the DHCP server and start listening for SSH connections. To decrypt the root partition and continue boot, from any shell, simply type `cryptroot-unlock`.
+Boot the Raspberry Pi with the new SD card. It will obtain an IP address from the DHCP server and start listening for SSH connections. To decrypt the root partition and continue boot, from any shell, simply run `cryptroot-unlock`.
 
 ## Avoiding SSH key collisions
 To avoid host key collisions you can configure a separate trusted hosts store in the `~/.ssh/config` of your client:
