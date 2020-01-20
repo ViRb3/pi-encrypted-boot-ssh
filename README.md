@@ -1,6 +1,5 @@
 # Raspberry Pi Encrypted Boot with SSH
-> Tested on [Raspberry Pi 3B](https://www.raspberrypi.org/products/raspberry-pi-3-model-b/) | [Ubuntu Server 19.10.1](https://ubuntu.com/download/raspberry-pi) \
-> 19.01.2020
+> Tested on [Raspberry Pi 3B / 4B](https://www.raspberrypi.org/products/raspberry-pi-3-model-b/) | [Ubuntu Server 19.10.1](https://ubuntu.com/download/raspberry-pi)
 
 ## Note
 The procedure described below can also be performed to an image file directly and then flashed to an SD card. This can be done by creating _two_ copies of the initial image file and mounting both via [kpartx](https://linux.die.net/man/8/kpartx). One will be readonly and used to fill the new, empty, encrypted root partition of the other.
