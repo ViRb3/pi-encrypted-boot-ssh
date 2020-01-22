@@ -46,7 +46,7 @@ echo -e "n\np\n2\n\n\nw" | fdisk /dev/sdb
 ```
 
 Create a new, encrypted partition in its place. In this example we will use [aes-adiantum](https://github.com/google/adiantum) since it is much faster on targets that lack hardware AES acceleration. Ensure that both the host's and Pi's kernel (>= [5.0.0](https://kernelnewbies.org/Linux_5.0#Adiantum_file_system_encryption_for_low_power_devices), must include .ko) and [cryptsetup](https://linux.die.net/man/8/cryptsetup) (>= [2.0.6](https://mirrors.edge.kernel.org/pub/linux/utils/cryptsetup/v2.0/v2.0.6-ReleaseNotes)) support it!
-> IMPORTANT: By default cryptsetup will benchmark the system that is creating the encrypted partition to find suitable memory difficulty. This is usually half of the machine's available RAM. Since the calculation is is done on the host, it is very likely to exceed the Raspberry Pi's maximum RAM and make it impossible to unlock the partition. To prevent this, set the [--pbkdf-memory](https://linux.die.net/man/8/cryptsetup) argument to something less than the Pi's maximum RAM.
+> :warning: __NOTE:__ By default cryptsetup will benchmark the system that is creating the encrypted partition to find suitable memory difficulty. This is usually half of the machine's available RAM. Since the calculation is is done on the host, it is very likely to exceed the Raspberry Pi's maximum RAM and make it impossible to unlock the partition. To prevent this, set the [--pbkdf-memory](https://linux.die.net/man/8/cryptsetup) argument to something less than the Pi's maximum RAM.
 ```sh
 cryptsetup luksFormat -c xchacha20,aes-adiantum-plain64 --pbkdf-memory 512000 /dev/sdb2
 cryptsetup open /dev/sdb2 crypted
@@ -112,7 +112,7 @@ LABEL=system-boot    /boot/firmware  vfat  defaults  0 1
 ```
 
 Edit [/etc/crypttab](https://linux.die.net/man/5/crypttab) and add an entry with your `encrypted` (raw) partition. In this example - `/dev/sdb2`.
-> IMPORTANT: Since the device name will likely be different on the Raspberry Pi, make sure to use the name that will be found on the Pi. Do not use UUIDs since cryptsetup will try to play smart and resolve them to a device name at _build_ time.
+> :warning: __NOTE:__ Since the device name will likely be different on the Raspberry Pi, make sure to use the name that will be found on the Pi. Do not use UUIDs since cryptsetup will try to play smart and resolve them to a device name at _build_ time.
 ```sh
 crypted  /dev/mmcblk0p2  none  luks
 ```
