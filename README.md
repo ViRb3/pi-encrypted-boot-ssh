@@ -135,20 +135,26 @@ echo "CRYPTSETUP=y" >> /etc/cryptsetup-initramfs/conf-hook
 ```
 
 ### SSH
-Write your SSH public key inside `/etc/dropbear-initramfs/authorized_keys` and `chmod 0600` the file.
+Write your SSH public key inside dropbear's `authorized_keys` and fix permissions:
+```sh
+echo "/REDACTED/" > /etc/dropbear-initramfs/authorized_keys
+chmod 0600 /etc/dropbear-initramfs/authorized_keys
+```
 
 ### Build initramfs
-Note the kernel version:
+Note if you already have an initramdisk - it should be under `/boot/initrd.img`. This will decide whether you need to update your boot config later on.
+
+Note your kernel version. If there are multiple, choose the one you want to run:
 ```sh
 ls /lib/modules/
 ```
 
-Build the new initramfs, overwriting the old one:
+Build the new initramdisk using the kernel version from above, overwriting the old initramdisk if it exists:
 ```sh
 mkinitramfs -o /boot/initrd.img "5.4.0-1008-raspi"
 ```
 
-If your system is not configured to use an initramfs (e.g. if there was nothing to overwrite), add an entry to your boot config:
+If you had an initramdisk when you checked in the beginning of this section, then your system is already configured to use an initramfs - no changes are necessary. Otherwise, add an entry to your boot config:
 ```sh
 echo initramfs initrd.img >> /boot/config.txt
 ```
