@@ -175,6 +175,7 @@ umount /mnt/chroot/dev/pts
 umount /mnt/chroot/dev
 umount /mnt/chroot
 cryptsetup close crypted
+umount /mnt/original
 kpartx -d "ubuntu-19.10.1-preinstalled-server-arm64+raspi3.img"
 ```
 
