@@ -171,8 +171,9 @@ exit
 ```
 
 ## On the host
-Unmount everything:
+Unmount everything and clean up any remaining artifacts:
 ```sh
+rm /mnt/chroot/usr/bin/qemu-*
 umount /mnt/chroot/boot
 umount /mnt/chroot/sys
 umount /mnt/chroot/proc
@@ -181,6 +182,8 @@ umount /mnt/chroot/dev
 umount /mnt/chroot
 cryptsetup close crypted
 umount /mnt/original
+rm -d /mnt/chroot
+rm -d /mnt/original
 kpartx -d "$PWD/ubuntu-20.04-preinstalled-server-arm64+raspi.img"
 ```
 
