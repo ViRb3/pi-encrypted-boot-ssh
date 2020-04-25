@@ -63,7 +63,7 @@ mount /dev/mapper/crypted /mnt/chroot/
 
 Mount the original image and its root partition. In this example the device is `/dev/mapper/loop0p2` - adapt as necessary:
 ```sh
-kpartx -ar "ubuntu-20.04-preinstalled-server-arm64+raspi.img"
+kpartx -ar "$PWD/ubuntu-20.04-preinstalled-server-arm64+raspi.img"
 mkdir -p /mnt/original/
 mount /dev/mapper/loop0p2 /mnt/original/
 ```
@@ -181,7 +181,7 @@ umount /mnt/chroot/dev
 umount /mnt/chroot
 cryptsetup close crypted
 umount /mnt/original
-kpartx -d "ubuntu-20.04-preinstalled-server-arm64+raspi.img"
+kpartx -d "$PWD/ubuntu-20.04-preinstalled-server-arm64+raspi.img"
 ```
 
 ## On the Raspberry Pi
