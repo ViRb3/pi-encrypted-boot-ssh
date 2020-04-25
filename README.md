@@ -1,5 +1,5 @@
 # Raspberry Pi Encrypted Boot with SSH
-> Tested on Raspberry Pi [3B](https://www.raspberrypi.org/products/raspberry-pi-3-model-b/) & [4B](https://www.raspberrypi.org/products/raspberry-pi-4-model-b/) with [Ubuntu Server 19.10.1](https://ubuntu.com/download/raspberry-pi)
+> Tested on Raspberry Pi [3B](https://www.raspberrypi.org/products/raspberry-pi-3-model-b/) & [4B](https://www.raspberrypi.org/products/raspberry-pi-4-model-b/) with [Ubuntu Server 20.04](https://ubuntu.com/download/raspberry-pi)
 
 ## Introduction
 This guide will show you how to encrypt your Raspberry Pi's root partition and set up an [initramfs](https://en.wikipedia.org/wiki/Initial_ramdisk) that will prompt for the password, decrypt the partition and gracefully resume boot. You will also learn how to enable SSH during this pre-boot stage, allowing you to unlock the partition remotely.
@@ -63,7 +63,7 @@ mount /dev/mapper/crypted /mnt/chroot/
 
 Mount the original image and its root partition. In this example the device is `/dev/mapper/loop0p2` - adapt as necessary:
 ```sh
-kpartx -ar "ubuntu-19.10.1-preinstalled-server-arm64+raspi3.img"
+kpartx -ar "ubuntu-20.04-preinstalled-server-arm64+raspi.img"
 mkdir -p /mnt/original/
 mount /dev/mapper/loop0p2 /mnt/original/
 ```
@@ -123,8 +123,7 @@ Edit [/etc/crypttab](https://linux.die.net/man/5/crypttab) and add an entry with
 crypted  /dev/mmcblk0p2  none  luks
 ```
 
-Edit `/boot/cmdline.txt` and update the root entry.
-On Ubunu Server this is `nobtcmd.txt` or `btcmd.txt`, depending on the operating mode:
+Edit `/boot/cmdline.txt` and update the root entry:
 ```sh
 root=/dev/mapper/crypted cryptdevice=/dev/mmcblk0p2:crypted rootfstype=ext4
 ```
@@ -146,7 +145,7 @@ ls /lib/modules/
 
 Build the new initramfs, overwriting the old one:
 ```sh
-mkinitramfs -o /boot/initrd.img "5.3.0-1014-raspi2"
+mkinitramfs -o /boot/initrd.img "5.4.0-1008-raspi"
 ```
 
 If your system is not configured to use an initramfs (e.g. if there was nothing to overwrite), add an entry to your boot config:
@@ -176,7 +175,7 @@ umount /mnt/chroot/dev
 umount /mnt/chroot
 cryptsetup close crypted
 umount /mnt/original
-kpartx -d "ubuntu-19.10.1-preinstalled-server-arm64+raspi3.img"
+kpartx -d "ubuntu-20.04-preinstalled-server-arm64+raspi.img"
 ```
 
 ## On the Raspberry Pi
