@@ -33,6 +33,12 @@ While the steps are written for the Raspberry Pi, they should be easily transfer
 While this guide operates directly on the SD card, you can easily work on an image file instead and then flash the result to an SD card. This can be done by creating _two_ copies of the initial OS image file and mounting both via [kpartx](https://linux.die.net/man/8/kpartx). One will be readonly and used to fill the new, empty, encrypted root partition of the other.
 
 ## On the host
+Flash your OS image onto the SD card if you haven't already. To verify, check the partitions:
+```sh
+lsblk
+```
+There should be at least two partitions - `boot` and `root`.
+
 Assuming the host is x86-64 and the Raspberry Pi is aarch64/arm, [qemu](https://www.qemu.org/) wil be required - install it
 ```sh
 apt update
