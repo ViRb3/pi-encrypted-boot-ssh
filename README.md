@@ -1,12 +1,14 @@
 # Raspberry Pi Encrypted Boot with SSH
 
-> Tested on Raspberry Pi [3B](https://www.raspberrypi.org/products/raspberry-pi-3-model-b/) & [4B](https://www.raspberrypi.org/products/raspberry-pi-4-model-b/) with [Ubuntu Server 20.04](https://ubuntu.com/download/raspberry-pi)
+> Tested on Raspberry Pi [3B](https://www.raspberrypi.org/products/raspberry-pi-3-model-b/) & [4B](https://www.raspberrypi.org/products/raspberry-pi-4-model-b/) with [Ubuntu Server 21.04](https://ubuntu.com/download/raspberry-pi)
 
 ## Introduction
 
 This guide will show you how to encrypt your Raspberry Pi's root partition and set up an [initramfs](https://en.wikipedia.org/wiki/Initial_ramdisk) that will prompt for the password, decrypt the partition and gracefully resume boot. You will also learn how to enable SSH during this pre-boot stage, allowing you to unlock the partition remotely.
 
 While the steps are written for the Raspberry Pi, they should be easily transferrable to other SBCs and computers as a whole.
+
+This guide operates on the OS image files and therefore does not require an SD card for the setup. The resulting image can be flashed to an SD card as usual.
 
 ## Table of Content
 
@@ -29,78 +31,105 @@ While the steps are written for the Raspberry Pi, they should be easily transfer
 
 ## Requirements
 
-- Raspberry Pi
-- OS image
-- SD card
-  - make sure there is enough space for the OS
+- Raspberry Pi OS image (e.g. [Ubuntu Server 21.04](https://ubuntu.com/download/raspberry-pi))
+- A host Linux installation (e.g. [Xubuntu 21.04](https://xubuntu.org/download))
 
-While this guide operates directly on the SD card, you can easily work on an image file instead and then flash the result to an SD card. This can be done by creating _two_ copies of the initial OS image file and mounting both via [kpartx](https://linux.die.net/man/8/kpartx). One will be readonly and used to fill the new, empty, encrypted root partition of the other.
+  > :warning: **NOTE:** Your host OS should be as similar as possible to the Raspberry Pi OS. If you are preparing Ubuntu 21.04 for the Raspberry Pi, use the same version on the host, otherwise you may encounter issues inside the chroot.
 
 ## On the host
-Flash your OS image onto the SD card if you haven't already. To verify, check the partitions:
 
-```sh
-lsblk
-```
+Install dependencies:
 
-There should be at least two partitions - `boot` and `root`.
-
-Assuming the host is x86-64 and the Raspberry Pi is aarch64/arm, [qemu](https://www.qemu.org/) wil be required - install it:
+> You can skip `qemu-user-static` if your host's architecture matches that of the OS image.
 
 ```sh
 apt update
-apt install -y qemu-user-static
+apt install -y kpartx cryptsetup-bin qemu-user-static
 ```
 
-Format the root partition. In this example the device is `/dev/sdb` and the partition is the second one - adapt as necessary:
+Create two copies of the OS image - one to read from (base), and one to write to (target):
+
+- ubuntu-base.img
+- ubuntu-target.img
+
+Map both images as devices, ensuring the base is readonly:
 
 ```sh
-echo -e "d\n2\nw" | fdisk /dev/sdb
-echo -e "n\np\n2\n\n\nw" | fdisk /dev/sdb
+kpartx -ar "$PWD/ubuntu-base.img"
+kpartx -a "$PWD/ubuntu-target.img"
 ```
 
-Create a new, encrypted partition in its place. In this example we will use [aes-adiantum](https://github.com/google/adiantum) since it is much faster on targets that lack hardware AES acceleration. Ensure that both the host's and Pi's kernel (>= [5.0.0](https://kernelnewbies.org/Linux_5.0#Adiantum_file_system_encryption_for_low_power_devices), must include .ko) and [cryptsetup](https://linux.die.net/man/8/cryptsetup) (>= [2.0.6](https://mirrors.edge.kernel.org/pub/linux/utils/cryptsetup/v2.0/v2.0.6-ReleaseNotes)) support it:
-
-> :warning: **NOTE:** By default cryptsetup will benchmark the system that is creating the encrypted partition to find suitable memory difficulty. This is usually half of the machine's available RAM. Since the calculation is is done on the host, it is very likely to exceed the Raspberry Pi's maximum RAM and make it impossible to unlock the partition. To prevent this, set the [--pbkdf-memory](https://linux.die.net/man/8/cryptsetup) argument to something less than the Pi's maximum RAM.
+If your system automatically mounted any partitions, unmount them:
 
 ```sh
-cryptsetup luksFormat -c xchacha20,aes-adiantum-plain64 --pbkdf-memory 512000 /dev/sdb2
-cryptsetup open /dev/sdb2 crypted
+umount /media/**/*
+```
+
+Run [lsblk](https://linux.die.net/man/8/lsblk) and verify the process was successful - you should see two loopback devices, each with two partitions:
+
+```sh
+NAME      MAJ:MIN RM  SIZE RO TYPE MOUNTPOINT # COMMENT
+loop0       7:0    0  3.3G  0 loop            # ubuntu-base.img
+├─loop0p1 253:0    0  256M  0 part            # ├─ boot
+└─loop0p2 253:1    0    3G  0 part            # └─ root
+loop1       7:1    0  3.3G  1 loop            # ubuntu-target.img
+├─loop1p1 253:2    0  256M  1 part            # ├─ boot
+└─loop1p2 253:3    0    3G  1 part            # └─ root
+```
+
+Mount the base image's root partition:
+
+```sh
+mkdir -p /mnt/original/
+mount /dev/mapper/loop0p2 /mnt/original/
+```
+
+Replace the target image's root partition with a new, encrypted partition:
+
+> :warning: **NOTE:**
+>
+> In this example we will use [aes-adiantum](https://github.com/google/adiantum) as the encryption method since it is much faster on targets that lack hardware AES acceleration. Ensure that both the host's and Pi's kernel (>= [5.0.0](https://kernelnewbies.org/Linux_5.0#Adiantum_file_system_encryption_for_low_power_devices), must include .ko) and [cryptsetup](https://linux.die.net/man/8/cryptsetup) (>= [2.0.6](https://mirrors.edge.kernel.org/pub/linux/utils/cryptsetup/v2.0/v2.0.6-ReleaseNotes)) support your encryption method.
+>
+> By default cryptsetup will benchmark the system that is creating the encrypted partition to find suitable memory difficulty. This is usually half of the machine's available RAM. Since the calculation is is done on the host, it is very likely to exceed the Raspberry Pi's maximum RAM and make it impossible to unlock the partition. To prevent this, set the [--pbkdf-memory](https://linux.die.net/man/8/cryptsetup) argument to something less than the Pi's maximum RAM.
+
+```sh
+cryptsetup luksFormat -c xchacha20,aes-adiantum-plain64 --pbkdf-memory 512000 /dev/mapper/loop1p2
+```
+
+Open (decrypt) the new partition:
+
+```
+cryptsetup open /dev/mapper/loop1p2 crypted
+```
+
+Then format and mount it:
+
+```
 mkfs.ext4 /dev/mapper/crypted
 mkdir -p /mnt/chroot/
 mount /dev/mapper/crypted /mnt/chroot/
 ```
 
-Mount the original image and its root partition. In this example the device is `/dev/mapper/loop0p2` - adapt as necessary:
+Copy the base image's root partition files to the target image's new, encrypted root partition. You can use [dd](https://linux.die.net/man/1/dd), but [rsync](https://linux.die.net/man/1/rsync) is faster:
 
 ```sh
-kpartx -ar "$PWD/ubuntu-20.04-preinstalled-server-arm64+raspi.img"
-mkdir -p /mnt/original/
-mount /dev/mapper/loop0p2 /mnt/original/
+rsync -ahP /mnt/original/* /mnt/chroot/
 ```
 
-Copy its contents to the new, empty, encrypted root partition. You could alternatively [dd](https://linux.die.net/man/1/dd) the raw partition, but [rsync](https://linux.die.net/man/1/rsync) is faster:
-
-```sh
-rsync -avh /mnt/original/* /mnt/chroot/
-```
-
-Set up a [chroot](https://linux.die.net/man/1/chroot) by mounting the boot partition and required virtual filesystems from the host:
+Set up a [chroot](https://linux.die.net/man/1/chroot) by mounting the target image's boot partition and required virtual filesystems from the host:
 
 ```sh
 mkdir -p /mnt/chroot/boot/
-mount /dev/sdb1 /mnt/chroot/boot/
+mount /dev/mapper/loop1p1 /mnt/chroot/boot/
 mount -t proc none /mnt/chroot/proc/
 mount -t sysfs none /mnt/chroot/sys/
 mount -o bind /dev /mnt/chroot/dev/
 mount -o bind /dev/pts /mnt/chroot/dev/pts/
 ```
 
-Prepare and enter the chroot. Depending on the image architecture you may have to use different qemu binaries:
+Enter the chroot:
 
 ```sh
-cp /usr/bin/qemu-arm-static /mnt/chroot/usr/bin/
-cp /usr/bin/qemu-aarch64-static /mnt/chroot/usr/bin/
 LANG=C chroot /mnt/chroot/
 ```
 
@@ -124,32 +153,32 @@ echo "nameserver 1.1.1.1" > /etc/resolv.conf
 
 ### Device configuration
 
-Run [blkid](https://linux.die.net/man/8/blkid) and note the following:
+Run [blkid](https://linux.die.net/man/8/blkid) and note the details of your encrypted and decrypted partitions:
 
 ```sh
-/dev/sdb2: UUID="b2094afd-bba5-4b1f-8d16-e0086f0a605b" TYPE="crypto_LUKS" PARTUUID="3d2c824d-02"
-/dev/mapper/crypted: UUID="5e5f88a1-8aae-4c1a-a9a6-d8a7adcd2db9" TYPE="ext4"
+# encrypted
+/dev/mapper/loop1p2: UUID="aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa" TYPE="crypto_LUKS" PARTUUID="cccccccc-cc"
+# decrypted
+/dev/mapper/crypted: UUID="bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb" BLOCK_SIZE="4096" TYPE="ext4"
 ```
 
-Edit [/etc/fstab](https://linux.die.net/man/5/fstab) and replace the root entry with your `decrypted` (virtual) partition. In this example - `/dev/mapper/crypted`, NOT `/dev/sdb2`:
+Edit [/etc/fstab](https://linux.die.net/man/5/fstab) and replace the root entry with your decrypted (virtual) partition's device name:
 
 ```sh
-/dev/mapper/crypted  /               ext4  defaults  0 0
-LABEL=system-boot    /boot/firmware  vfat  defaults  0 1
+/dev/mapper/crypted /               ext4  discard,errors=remount-ro 0 0
+LABEL=system-boot   /boot/firmware  vfat  defaults                  0 1
 ```
 
-Edit [/etc/crypttab](https://linux.die.net/man/5/crypttab) and add an entry with your `encrypted` (raw) partition. In this example - `/dev/sdb2`:
-
-> :warning: **NOTE:** Since the device name will likely be different on the Raspberry Pi, make sure to use the name that will be found on the Pi. Do not use UUIDs since cryptsetup will try to play smart and resolve them to a device name at _build_ time.
+Edit [/etc/crypttab](https://linux.die.net/man/5/crypttab) and add an entry with your encrypted (raw) partition's UUID:
 
 ```sh
-crypted  /dev/mmcblk0p2  none  luks
+crypted UUID=aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa none luks,initramfs
 ```
 
 Edit `/boot/cmdline.txt` and update the root entry:
 
 ```sh
-root=/dev/mapper/crypted cryptdevice=/dev/mmcblk0p2:crypted rootfstype=ext4
+root=/dev/mapper/crypted cryptdevice=UUID=aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa:crypted
 ```
 
 ### Cryptsetup
@@ -158,6 +187,29 @@ Edit the cryptsetup initramfs hook to ensure cryptsetup ends up in the initramfs
 
 ```sh
 echo "CRYPTSETUP=y" >> /etc/cryptsetup-initramfs/conf-hook
+```
+
+At least on Ubuntu Server 21.04, the [initramfs-tools](https://manpages.ubuntu.com/manpages/xenial/man8/initramfs-tools.8.html) `cryptroot` hook will resolve any UUIDs to device names during initramfs generation. This is a problem because the device names will likely differ between the host and the Raspberry Pi, resulting in failure to boot. To work around this, apply the following patch:
+
+```patch
+patch /usr/share/initramfs-tools/hooks/cryptroot << 'EOF'
+--- cryptroot
++++ cryptroot
+@@ -33,7 +33,7 @@
+         printf '%s\0' "$target" >>"$DESTDIR/cryptroot/targets"
+         crypttab_find_entry "$target" || return 1
+         crypttab_parse_options --missing-path=warn || return 1
+-        crypttab_print_entry
++        printf '%s %s %s %s\n' "$_CRYPTTAB_NAME" "$_CRYPTTAB_SOURCE" "$_CRYPTTAB_KEY" "$_CRYPTTAB_OPTIONS" >&3
+     fi
+ }
+EOF
+```
+
+If you are planning to run on a Raspberry Pi 3, the default timeout when waiting for decryption (e.g. 10 seconds) may be too short and you may get a timeout error. To work around this, bump the timeout:
+
+```sh
+sed -i 's/^TIMEOUT=.*/TIMEOUT=100/g' /usr/share/cryptsetup/initramfs/bin/cryptroot-unlock
 ```
 
 ### SSH
@@ -171,7 +223,7 @@ chmod 0600 /etc/dropbear-initramfs/authorized_keys
 
 ### Build initramfs
 
-Note if you already have an initramdisk - it should be under `/boot/initrd.img`. This will decide whether you need to update your boot config later on.
+Note whether you already have an initramdisk - it should be under `/boot/initrd.img`. This will decide whether you need to update your boot config later on.
 
 Note your kernel version. If there are multiple, choose the one you want to run:
 
@@ -193,7 +245,7 @@ echo initramfs initrd.img >> /boot/config.txt
 
 ### Cleanup
 
-Revert any changes you have made before:
+Revert any changes if you have made them before:
 
 ```sh
 mv /etc/resolv.conf.bak /etc/resolv.conf
@@ -211,7 +263,6 @@ exit
 Unmount everything and clean up any remaining artifacts:
 
 ```sh
-rm /mnt/chroot/usr/bin/qemu-*
 umount /mnt/chroot/boot
 umount /mnt/chroot/sys
 umount /mnt/chroot/proc
@@ -222,12 +273,28 @@ cryptsetup close crypted
 umount /mnt/original
 rm -d /mnt/chroot
 rm -d /mnt/original
-kpartx -d "$PWD/ubuntu-20.04-preinstalled-server-arm64+raspi.img"
+kpartx -d "$PWD/ubuntu-base.img"
+kpartx -d "$PWD/ubuntu-target.img"
 ```
+
+You are now ready to flash `ubuntu-target.img` to an SD card.
 
 ## On the Raspberry Pi
 
 Boot the Raspberry Pi with the new SD card. It will obtain an IP address from the DHCP server and start listening for SSH connections. To decrypt the root partition and continue boot, from any shell, simply run `cryptroot-unlock`.
+
+Once booted into the decrypted system, you will notice that the root partition is still sized at ~3GB, no matter how much space you have on the SD card. To fix this, delete and recreate the partition, this time using all available space, then tell cryptsetup to resize it:
+
+```sh
+echo -e "d\n2\nn\np\n2\n\n\nw" | fdisk /dev/mmcblk0
+cryptsetup resize crypted
+```
+
+Finally, reboot the system for the changes to take effect:
+
+```sh
+reboot
+```
 
 ## Avoiding SSH key collisions
 
