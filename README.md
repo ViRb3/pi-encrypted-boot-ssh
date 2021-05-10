@@ -113,7 +113,7 @@ mount /dev/mapper/crypted /mnt/chroot/
 Copy the base image's root partition files to the target image's new, encrypted root partition. You can use [dd](https://linux.die.net/man/1/dd), but [rsync](https://linux.die.net/man/1/rsync) is faster:
 
 ```sh
-rsync -ahP /mnt/original/* /mnt/chroot/
+rsync --archive --hard-links --acls --xattrs --one-file-system --numeric-ids --info="progress2" /mnt/original/* /mnt/chroot/
 ```
 
 Set up a [chroot](https://linux.die.net/man/1/chroot) by mounting the target image's boot partition and required virtual filesystems from the host:
