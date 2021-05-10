@@ -165,7 +165,7 @@ Run [blkid](https://linux.die.net/man/8/blkid) and note the details of your encr
 Edit [/etc/fstab](https://linux.die.net/man/5/fstab) and replace the root entry with your decrypted (virtual) partition's device name:
 
 ```sh
-/dev/mapper/crypted /               ext4  discard,errors=remount-ro 0 0
+/dev/mapper/crypted /               ext4  discard,errors=remount-ro 0 1
 LABEL=system-boot   /boot/firmware  vfat  defaults                  0 1
 ```
 
