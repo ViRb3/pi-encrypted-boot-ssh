@@ -255,7 +255,7 @@ Sync and exit the chroot:
 
 ```sh
 sync
-exit
+history -c && exit
 ```
 
 ## On the host
