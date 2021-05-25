@@ -192,7 +192,7 @@ echo "CRYPTSETUP=y" >> /etc/cryptsetup-initramfs/conf-hook
 At least on Ubuntu Server 21.04, the [initramfs-tools](https://manpages.ubuntu.com/manpages/xenial/man8/initramfs-tools.8.html) `cryptroot` hook will resolve any UUIDs to device names during initramfs generation. This is a problem because the device names will likely differ between the host and the Raspberry Pi, resulting in failure to boot. To work around this, apply the following patch:
 
 ```patch
-patch /usr/share/initramfs-tools/hooks/cryptroot << 'EOF'
+patch --no-backup-if-mismatch /usr/share/initramfs-tools/hooks/cryptroot << 'EOF'
 --- cryptroot
 +++ cryptroot
 @@ -33,7 +33,7 @@
