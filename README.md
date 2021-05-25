@@ -8,7 +8,7 @@ This guide will show you how to encrypt your Raspberry Pi's root partition and s
 
 While the steps are written for the Raspberry Pi, they should be easily transferrable to other SBCs and computers as a whole.
 
-This guide operates on the OS image files and therefore does not require an SD card for the setup. The resulting image can be flashed to an SD card as usual.
+This guide operates directly on an image file and therefore does not require an SD card for the setup. The resulting image can be flashed to an SD card as usual.
 
 ## Table of Content
 
@@ -31,23 +31,23 @@ This guide operates on the OS image files and therefore does not require an SD c
 
 ## Requirements
 
-- Raspberry Pi OS image (e.g. [Ubuntu Server 21.04](https://ubuntu.com/download/raspberry-pi))
-- A host Linux installation (e.g. [Xubuntu 21.04](https://xubuntu.org/download))
+- A Raspberry Pi Linux image (e.g. [Ubuntu Server 21.04](https://ubuntu.com/download/raspberry-pi))
+- A computer (host) running Linux (e.g. [Xubuntu 21.04](https://xubuntu.org/download))
 
-  > :warning: **NOTE:** Your host OS should be as similar as possible to the Raspberry Pi OS. If you are preparing Ubuntu 21.04 for the Raspberry Pi, use the same version on the host, otherwise you may encounter issues inside the chroot.
+  > :warning: **NOTE:** Your host's Linux should be as similar as possible to the Raspberry Pi's Linux. If you are preparing Ubuntu 21.04 for the Raspberry Pi, use the same version on the host, otherwise you may encounter issues inside the chroot.
 
 ## On the host
 
 Install dependencies:
 
-> You can skip `qemu-user-static` if your host's architecture matches that of the OS image.
+> You can skip `qemu-user-static` if your host Linux's architecture matches that of the Raspberry Pi's Linux image.
 
 ```sh
 apt update
 apt install -y kpartx cryptsetup-bin qemu-user-static
 ```
 
-Create two copies of the OS image - one to read from (base), and one to write to (target):
+Create two copies of the Raspberry Pi's Linux image - one to read from (base), and one to write to (target):
 
 - ubuntu-base.img
 - ubuntu-target.img
