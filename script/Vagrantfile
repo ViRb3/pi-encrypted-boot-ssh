@@ -1,0 +1,15 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+Vagrant.configure("2") do |config|
+  config.vm.provider "virtualbox" do |v|
+    v.name = "encrypted-rpi"
+  end
+  config.vm.box = "ubuntu/hirsute64"
+
+  config.vm.synced_folder ".", "/home/vagrant/project"
+
+  config.vm.provider "virtualbox" do |vb|
+    vb.memory = "8192"
+  end
+end
