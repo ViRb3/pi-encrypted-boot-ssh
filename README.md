@@ -283,14 +283,15 @@ You are now ready to flash `ubuntu-target.img` to an SD card.
 
 Boot the Raspberry Pi with the new SD card. It will obtain an IP address from the DHCP server and start listening for SSH connections. To decrypt the root partition and continue boot, from any shell, simply run `cryptroot-unlock`.
 
-Once booted into the decrypted system, you will notice that the root partition is still sized at ~3GB, no matter how much space you have on the SD card. To fix this, delete and recreate the partition, this time using all available space, then tell cryptsetup to resize it:
+Once booted into the decrypted system, you will notice that the root partition is still sized at ~3GB, no matter how much space you have on the SD card. To fix this, delete and recreate the partition, this time using all available space, then follow up with cryptsetup and ext4 resize:
 
 ```sh
 echo -e "d\n2\nn\np\n2\n\n\nw" | fdisk /dev/mmcblk0
 cryptsetup resize crypted
+resize2fs /dev/mapper/crypted
 ```
 
-Finally, reboot the system for the changes to take effect:
+Finally, reboot the system for good measure:
 
 ```sh
 reboot
