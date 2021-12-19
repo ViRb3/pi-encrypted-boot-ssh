@@ -34,7 +34,8 @@ This guide operates directly on an image file and therefore does not require an 
 - A Raspberry Pi Linux image (e.g. [Ubuntu Server 21.04](https://ubuntu.com/download/raspberry-pi))
 - A computer (host) running Linux (e.g. [Xubuntu 21.04](https://xubuntu.org/download))
 
-  > :warning: **NOTE:** Your host's Linux should be as similar as possible to the Raspberry Pi's Linux. If you are preparing Ubuntu 21.04 for the Raspberry Pi, use the same version on the host, otherwise you may encounter issues inside the chroot.
+  > :warning: **NOTE:** Your host's Linux should be as similar as possible to the Raspberry Pi's Linux. If you are preparing Ubuntu 21.04 for the Raspberry Pi, use the same version on the host, otherwise you may encounter issues inside the chroot.  
+  > Alternatively, if you don't have the same host you can boot up the raspberry pi and prepare the image from there.
 
 ## On the host
 
