@@ -1,6 +1,6 @@
 # Raspberry Pi Encrypted Boot with SSH
 
-> Tested on Raspberry Pi [3B](https://www.raspberrypi.org/products/raspberry-pi-3-model-b/) & [4B](https://www.raspberrypi.org/products/raspberry-pi-4-model-b/) with [Ubuntu Server 21.04](https://ubuntu.com/download/raspberry-pi)
+> Tested on Raspberry Pi [3B](https://www.raspberrypi.org/products/raspberry-pi-3-model-b/) & [4B](https://www.raspberrypi.org/products/raspberry-pi-4-model-b/) with [Ubuntu Server 21.04](https://ubuntu.com/download/raspberry-pi) & [Debian 11] (https://raspi.debian.net/tested/20210823_raspi_4_bullseye.img.xz)
 
 ## Introduction
 
