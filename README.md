@@ -312,6 +312,11 @@ Host box-initramfs
 	User root
 	UserKnownHostsFile ~/.ssh/known_hosts.initramfs
 ```
+Alternately, you can point to `~/.ssh/known_hosts.initramfs` from the command line:
+
+```ssh
+ssh -o UserKnownHostsFile=~/.ssh/known_host.initramfs root@192.168.0.30
+```
 
 ## Resources
 
