@@ -181,6 +181,12 @@ Edit `/boot/cmdline.txt` and update the root entry:
 root=/dev/mapper/crypted cryptdevice=UUID=aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa:crypted
 ```
 
+Enable SSH for the decrypted OS:
+
+```sh
+touch /boot/ssh
+```
+
 ### Cryptsetup
 
 Edit the cryptsetup initramfs hook to ensure cryptsetup ends up in the initramfs:
