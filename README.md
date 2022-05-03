@@ -1,7 +1,7 @@
 # Raspberry Pi Encrypted Boot with SSH
 
-> ⚠️ This guide is only supported for Raspberry Pi [3B](https://www.raspberrypi.org/products/raspberry-pi-3-model-b/) & [4B](https://www.raspberrypi.org/products/raspberry-pi-4-model-b/) with [Ubuntu Server 21.04](https://ubuntu.com/download/raspberry-pi). \
-> Other platforms and distributions may work, but there may be unexpected issues or side effects.
+> ⚠️ This guide is only supported for Raspberry Pi [3B](https://www.raspberrypi.org/products/raspberry-pi-3-model-b/) & [4B](https://www.raspberrypi.org/products/raspberry-pi-4-model-b/) with [Ubuntu Server 22.04](https://ubuntu.com/download/raspberry-pi). \
+> Other platforms and distributions may work, but there will be unexpected issues or side effects.
 
 ## Introduction
 
@@ -32,10 +32,10 @@ This guide operates directly on an image file and therefore does not require an 
 
 ## Requirements
 
-- A Raspberry Pi Linux image (e.g. [Ubuntu Server 21.04](https://ubuntu.com/download/raspberry-pi))
-- A computer (host) running Linux (e.g. [Xubuntu 21.04](https://xubuntu.org/download))
+- A Raspberry Pi Linux image (e.g. [Ubuntu Server 22.04](https://ubuntu.com/download/raspberry-pi))
+- A computer (host) running Linux (e.g. [Xubuntu 22.04](https://xubuntu.org/download))
 
-  > :warning: **NOTE:** Your host's Linux should be as similar as possible to the Raspberry Pi's Linux. If you are preparing Ubuntu 21.04 for the Raspberry Pi, use the same version on the host, otherwise you may encounter issues inside the chroot.
+  > :warning: **NOTE:** Your host's Linux should be as similar as possible to the Raspberry Pi's Linux. If you are preparing Ubuntu 22.04 for the Raspberry Pi, use the same version on the host, otherwise you may encounter issues inside the chroot.
 
 ## On the host
 
@@ -196,7 +196,7 @@ Edit the cryptsetup initramfs hook to ensure cryptsetup ends up in the initramfs
 echo "CRYPTSETUP=y" >> /etc/cryptsetup-initramfs/conf-hook
 ```
 
-At least on Ubuntu Server 21.04, the [initramfs-tools](https://manpages.ubuntu.com/manpages/xenial/man8/initramfs-tools.8.html) `cryptroot` hook will resolve any UUIDs to device names during initramfs generation. This is a problem because the device names will likely differ between the host and the Raspberry Pi, resulting in failure to boot. To work around this, apply the following patch:
+At least on Ubuntu Server 22.04, the [initramfs-tools](https://manpages.ubuntu.com/manpages/xenial/man8/initramfs-tools.8.html) `cryptroot` hook will resolve any UUIDs to device names during initramfs generation. This is a problem because the device names will likely differ between the host and the Raspberry Pi, resulting in failure to boot. To work around this, apply the following patch:
 
 ```patch
 patch --no-backup-if-mismatch /usr/share/initramfs-tools/hooks/cryptroot << 'EOF'
@@ -224,8 +224,8 @@ sed -i 's/^TIMEOUT=.*/TIMEOUT=100/g' /usr/share/cryptsetup/initramfs/bin/cryptro
 Write your SSH public key inside dropbear's `authorized_keys` and fix permissions:
 
 ```sh
-echo "/REDACTED/" > /etc/dropbear-initramfs/authorized_keys
-chmod 0600 /etc/dropbear-initramfs/authorized_keys
+echo "/REDACTED/" > /etc/dropbear/initramfs/authorized_keys
+chmod 0600 /etc/dropbear/initramfs/authorized_keys
 ```
 
 ### Build initramfs
