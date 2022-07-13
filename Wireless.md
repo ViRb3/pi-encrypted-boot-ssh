@@ -11,14 +11,14 @@ Create the following files and customize them if necessary:
   {
       echo "$PREREQ"
   }
-  
+
   case $1 in
   prereqs)
       prereqs
       exit 0
       ;;
   esac
-  
+
   sleep 1
   /sbin/wpa_supplicant -i wlan0 -c /etc/wpa_supplicant.conf -P /run/initram-wpa_supplicant.pid -B
   ```
@@ -39,18 +39,18 @@ Create the following files and customize them if necessary:
           exit 0
           ;;
   esac
-  
+
   . /usr/share/initramfs-tools/hook-functions
-  
+
   copy_exec /sbin/wpa_supplicant
-  
+
   # copy WiFi driver
   copy_modules_dir kernel/drivers/net/wireless/broadcom/brcm80211/brcmfmac
   # copy additional firmware files, ignoring error if they are already copied
   for f in /lib/firmware/brcm/brcmfmac*; do
   	copy_file firmware "$f" || true
   done
-  
+
   copy_file config /etc/initramfs-tools/wpa_supplicant.conf /etc/wpa_supplicant.conf
   ```
 
@@ -63,14 +63,14 @@ Create the following files and customize them if necessary:
   {
       echo "$PREREQ"
   }
-  
+
   case $1 in
   prereqs)
       prereqs
       exit 0
       ;;
   esac
-  
+
   # allow the decrypted OS to handle WiFi on its own
   kill $(cat /run/initram-wpa_supplicant.pid)
   ip link set wlan0 down
@@ -84,7 +84,7 @@ Create the following files and customize them if necessary:
   ```bash
   ctrl_interface=/tmp/wpa_supplicant
   country=GB
-  
+
   network={
       ssid="Foo"
       scan_ssid=1
@@ -105,18 +105,18 @@ Set up WiFi for the decrypted OS. On Ubuntu, you do this by creating e.g. `/etc/
 
 ```yaml
 network:
-    version: 2
-    ethernets:
-        eth0:
-            dhcp4: true
-            optional: true
-    wifis:
-        wlan0:
-            optional: true
-            access-points:
-                "Foo":
-                    password: "Bar"
-            dhcp4: true
+  version: 2
+  ethernets:
+    eth0:
+      dhcp4: true
+      optional: true
+  wifis:
+    wlan0:
+      optional: true
+      access-points:
+        "Foo":
+          password: "Bar"
+      dhcp4: true
 ```
 
 You're done! Follow the rest of the guide to finish building your initramfs.

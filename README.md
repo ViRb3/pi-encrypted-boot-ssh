@@ -92,10 +92,10 @@ Replace the target image's root partition with a new, encrypted partition:
 >
 > In this example we will use [aes-adiantum](https://github.com/google/adiantum) as the encryption method since it is much faster on targets that lack hardware AES acceleration. Ensure that both the host's and Pi's kernel (>= [5.0.0](https://kernelnewbies.org/Linux_5.0#Adiantum_file_system_encryption_for_low_power_devices), must include .ko) and [cryptsetup](https://linux.die.net/man/8/cryptsetup) (>= [2.0.6](https://mirrors.edge.kernel.org/pub/linux/utils/cryptsetup/v2.0/v2.0.6-ReleaseNotes)) support your encryption method.
 >
-> By default cryptsetup will benchmark the system that is creating the encrypted partition to find suitable memory difficulty. This is usually half of the machine's available RAM. Since the calculation is is done on the host, it is very likely to exceed the Raspberry Pi's maximum RAM and make it impossible to unlock the partition. To prevent this, set the [--pbkdf-memory](https://linux.die.net/man/8/cryptsetup) argument to something less than the Pi's maximum RAM.
+> By default cryptsetup will use a memory-hard PBKDF algorithm that requires 4GB of RAM. With these settings, you are likely to exceed the Raspberry Pi's maximum RAM and make it impossible to unlock the partition. To work around this, set the [--pbkdf-memory](https://linux.die.net/man/8/cryptsetup) and [--pbkdf-parallel](https://linux.die.net/man/8/cryptsetup) arguments so when you multiply them, the result is less than your Pi's total RAM:
 
 ```sh
-cryptsetup luksFormat -c xchacha20,aes-adiantum-plain64 --pbkdf-memory 512000 /dev/mapper/loop1p2
+cryptsetup luksFormat -c xchacha20,aes-adiantum-plain64 --pbkdf-memory 512000 --pbkdf-parallel=1 /dev/mapper/loop1p2
 ```
 
 Open (decrypt) the new partition:
@@ -139,18 +139,18 @@ LANG=C chroot /mnt/chroot/
 
 ### Prepare
 
-Install dependencies:
-
-```sh
-apt update
-apt install -y busybox cryptsetup dropbear-initramfs
-```
-
-If the chroot cannot resolve hostnames, you might have a symlinked [resolv.conf](https://linux.die.net/man/5/resolv.conf) that is invalid in the chroot context. To work around this, back it up and create a simple nameserver replacement:
+Since Ubuntu has a symlinked [resolv.conf](https://linux.die.net/man/5/resolv.conf) that is invalid in the chroot context, you will not have internet access. To work around this, back it up and create a simple nameserver replacement:
 
 ```sh
 mv /etc/resolv.conf /etc/resolv.conf.bak
 echo "nameserver 1.1.1.1" > /etc/resolv.conf
+```
+
+Next, install the dependencies:
+
+```sh
+apt update
+apt install -y busybox cryptsetup dropbear-initramfs
 ```
 
 ### Device configuration
@@ -235,24 +235,16 @@ This step is optional. If you want the Raspberry Pi to be decryptable over WiFi,
 
 ### Build initramfs
 
-Note whether you already have an initramdisk — it should be under `/boot/initrd.img`. This will decide whether you need to update your boot config later on.
-
 Note your kernel version. If there are multiple, choose the one you want to run:
 
 ```sh
 ls /lib/modules/
 ```
 
-Build the new initramdisk using the kernel version from above, overwriting the old initramdisk if it exists:
+Build the new initramdisk using the kernel version from above, overwriting the old initramdisk:
 
 ```sh
 mkinitramfs -o /boot/initrd.img "5.15.0-1005-raspi"
-```
-
-If you had an initramdisk when you checked in the beginning of this section, then your system is already configured to use an initramfs — no changes are necessary. Otherwise, add an entry to your boot config:
-
-```sh
-echo initramfs initrd.img >> /boot/config.txt
 ```
 
 ### Cleanup
