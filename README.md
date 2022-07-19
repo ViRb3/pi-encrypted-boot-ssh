@@ -5,9 +5,9 @@
 
 ## Introduction
 
-This guide will show you how to encrypt your Raspberry Pi's root partition and set up an [initramfs](https://en.wikipedia.org/wiki/Initial_ramdisk) that will prompt for the password, decrypt the partition and gracefully resume boot. You will also learn how to enable SSH during this pre-boot stage, allowing you to unlock the partition remotely.
+This guide will show you how to encrypt your Raspberry Pi's root partition and set up an [initramfs](https://en.wikipedia.org/wiki/Initial_ramdisk) that will prompt for the password, decrypt the partition and gracefully resume boot. You will also learn how to enable SSH during this pre-boot stage, allowing you to unlock the partition remotely. There are also optional steps for WiFi setup.
 
-While the steps are written for the Raspberry Pi, they should be easily transferrable to other SBCs and computers as a whole.
+While the steps are written for the Raspberry Pi, they should be easily transferrable to other SBCs and computers as a whole. However, only the Raspberry Pi is officially supported by this guide.
 
 This guide operates directly on an image file and therefore does not require an SD card for the setup. The resulting image can be flashed to an SD card as usual.
 
@@ -222,16 +222,16 @@ sed -i 's/^TIMEOUT=.*/TIMEOUT=100/g' /usr/share/cryptsetup/initramfs/bin/cryptro
 
 ### SSH
 
-Write your SSH public key inside dropbear's `authorized_keys` and fix permissions:
+Write your SSH public key inside dropbear's and your decrypted OS's `authorized_keys` and fix permissions:
 
 ```sh
-echo "/REDACTED/" > /etc/dropbear/initramfs/authorized_keys
-chmod 0600 /etc/dropbear/initramfs/authorized_keys
+echo "/REDACTED/" | tee /etc/dropbear/initramfs/authorized_keys /root/.ssh/authorized_keys
+chmod 0600 /etc/dropbear/initramfs/authorized_keys /root/.ssh/authorized_keys
 ```
 
 ### WiFi support
 
-This step is optional. If you want the Raspberry Pi to be decryptable over WiFi, check out [Wireless.md](Wireless.md).
+This step is optional. If you want the Raspberry Pi to be decryptable over WiFi, check out [Wireless-Builtin.md](Wireless-Builtin.md) and [Wireless-USB.md](Wireless-USB.md).
 
 ### Build initramfs
 

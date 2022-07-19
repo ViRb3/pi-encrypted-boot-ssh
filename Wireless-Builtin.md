@@ -1,5 +1,9 @@
 # WiFi Support
 
+This guide will show you how to set up the Raspberry Pi's built-in WiFi module for use during initramfs.
+
+## Set up initramfs
+
 Create the following files and customize them if necessary:
 
 - `/etc/initramfs-tools/scripts/init-premount/a_enable_wireless`
@@ -75,7 +79,7 @@ Create the following files and customize them if necessary:
   kill $(cat /run/initram-wpa_supplicant.pid)
   ip link set wlan0 down
   # created by initramfs
-  # for some reason it lists wlan0 as ethernet, which breaks netplan — remove it
+  # for some reason it lists wlan0 as ethernet, which breaks netplan - remove it
   rm -f /run/netplan/wlan0.yaml
   ```
 
@@ -84,7 +88,7 @@ Create the following files and customize them if necessary:
   ```bash
   ctrl_interface=/tmp/wpa_supplicant
   country=GB
-
+  
   network={
       ssid="Foo"
       scan_ssid=1
