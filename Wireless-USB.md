@@ -44,6 +44,16 @@ Finally, make the new driver load on boot in the decrypted OS:
 echo "88x2bu.ko" >> /etc/modules-load.d/modules.conf 
 ```
 
+To prevent issues, you may also want to disable the power-saving mode of the driver:
+
+- `/etc/modprobe.d/88x2bu.conf`
+
+  ```bash
+  options 88x2bu rtw_power_mgnt=0 rtw_ips_mode=0 rtw_enusbss=0
+  ```
+
+If you are connecting the card to a USB3 port, also add `rtw_switch_usb_mode=1` to force it into USB3 mode.
+
 ## Set up initramfs
 
 On Ubuntu 22.04, external (USB) WiFi dongles have a deterministic interface naming scheme that uses the device's MAC address, like: `wlx112233445566`. Replace the interface name with yours in the examples below.

@@ -155,13 +155,12 @@ apt install -y busybox cryptsetup dropbear-initramfs
 
 ### Device configuration
 
-Run [blkid](https://linux.die.net/man/8/blkid) and note the details of your encrypted and decrypted partitions:
+Run [blkid](https://linux.die.net/man/8/blkid) and note the details of your encrypted partition:
 
 ```sh
-# encrypted
+blkid | grep crypto_LUKS
+
 /dev/mapper/loop1p2: UUID="aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa" TYPE="crypto_LUKS" PARTUUID="cccccccc-cc"
-# decrypted
-/dev/mapper/crypted: UUID="bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb" BLOCK_SIZE="4096" TYPE="ext4"
 ```
 
 Edit [/etc/fstab](https://linux.die.net/man/5/fstab) and replace the root entry with your decrypted (virtual) partition's device name:
@@ -225,6 +224,7 @@ sed -i 's/^TIMEOUT=.*/TIMEOUT=100/g' /usr/share/cryptsetup/initramfs/bin/cryptro
 Write your SSH public key inside dropbear's and your decrypted OS's `authorized_keys` and fix permissions:
 
 ```sh
+mkdir -p /root/.ssh && chmod 0700 /root/.ssh
 echo "/REDACTED/" | tee /etc/dropbear/initramfs/authorized_keys /root/.ssh/authorized_keys
 chmod 0600 /etc/dropbear/initramfs/authorized_keys /root/.ssh/authorized_keys
 ```
