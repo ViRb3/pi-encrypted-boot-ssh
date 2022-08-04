@@ -4,7 +4,7 @@ This guide will show you how to set up a WiFi USB dongle for use during initramf
 
 ## Installing driver
 
-The steps below are written for the [TP-LINK T4U](https://www.tp-link.com/uk/home-networking/adapter/archer-t4u/) USB dongle, which uses the Realtek RTL88x2B driver. As of Linux 5.15, this driver is not included in the kernel, so it needs to be built and installed manually. If your driver comes with your kernel, you can skip this step.
+The steps below are written for the [TP-LINK T4U](https://www.tp-link.com/uk/home-networking/adapter/archer-t4u/) USB dongle, which uses the Realtek RTL88x2B driver. As of Linux 5.15, this driver is not included in the kernel, so it needs to be built and installed manually. If your driver comes with your kernel, you can skip this section.
 
 First, install [dkms](https://help.ubuntu.com/community/DKMS):
 
@@ -21,30 +21,24 @@ mkinitramfs -o /boot/initrd.img "5.15.0-1005-raspi"
 Prepare the driver:
 
 ```bash
-git clone "https://github.com/RinCat/RTL88x2BU-Linux-Driver.git" /usr/src/rtl88x2bu-git
-sed -i 's/PACKAGE_VERSION="@PKGVER@"/PACKAGE_VERSION="git"/g' /usr/src/rtl88x2bu-git/dkms.conf
-dkms add -m rtl88x2bu -v git
+git clone https://github.com/morrownr/88x2bu-20210702.git
+cd 88x2bu-20210702
+./ARM64_RPI.sh
 ```
 
 By default, this driver's Makefile will use all of your CPU cores. This has the side effect of also using additional RAM, and if you're on a 1GB RAM device, it may run out of memory. To work around, disable the parallel build:
 
 ```bash
-sed -i 's/-j$(nproc)//g' /usr/src/rtl88x2bu-git/dkms.conf
+sed -i 's/-j$(nproc)//g' dkms.conf
 ```
 
 Build and install the driver:
 
 ```bash
-dkms autoinstall -k "5.15.0-1005-raspi"
+./install-driver.sh
 ```
 
-Finally, make the new driver load on boot in the decrypted OS:
-
-```bash
-echo "88x2bu.ko" >> /etc/modules-load.d/modules.conf 
-```
-
-To prevent issues, you may also want to disable the power-saving mode of the driver:
+To prevent issues, disable all power-saving features:
 
 - `/etc/modprobe.d/88x2bu.conf`
 
@@ -52,7 +46,7 @@ To prevent issues, you may also want to disable the power-saving mode of the dri
   options 88x2bu rtw_power_mgnt=0 rtw_ips_mode=0 rtw_enusbss=0
   ```
 
-If you are connecting the card to a USB3 port, also add `rtw_switch_usb_mode=1` to force it into USB3 mode.
+If you are connecting the card to a USB3 port, also add `rtw_switch_usb_mode=1` to force it into USB3 mode. Note that the Raspberry Pi 4B specifically has an issue where the driver silently stops working in USB3 mode when acting as AP or when downloading large volumes of data (~120GB). To work around, leave as default or add `rtw_switch_usb_mode=2` to force USB2 mode.
 
 ## Set up initramfs
 
@@ -178,4 +172,4 @@ You're done! Follow the rest of the guide to finish building your initramfs.
 ## Resources
 
 - [Wireless-Builtin.md](Wireless-Builtin.md)
-- https://github.com/RinCat/RTL88x2BU-Linux-Driver
+- https://github.com/morrownr/88x2bu-20210702
