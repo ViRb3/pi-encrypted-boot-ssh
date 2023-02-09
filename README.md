@@ -155,19 +155,19 @@ apt install -y busybox cryptsetup dropbear-initramfs
 
 ### Device configuration
 
+Edit [/etc/fstab](https://linux.die.net/man/5/fstab) and replace the root entry with your decrypted (virtual) partition's device name:
+
+```sh
+/dev/mapper/crypted /               ext4  discard,errors=remount-ro 0 1
+LABEL=system-boot   /boot/firmware  vfat  defaults                  0 1
+```
+
 Run [blkid](https://linux.die.net/man/8/blkid) and note the details of your encrypted partition:
 
 ```sh
 blkid | grep crypto_LUKS
 
 /dev/mapper/loop1p2: UUID="aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa" TYPE="crypto_LUKS" PARTUUID="cccccccc-cc"
-```
-
-Edit [/etc/fstab](https://linux.die.net/man/5/fstab) and replace the root entry with your decrypted (virtual) partition's device name:
-
-```sh
-/dev/mapper/crypted /               ext4  discard,errors=remount-ro 0 1
-LABEL=system-boot   /boot/firmware  vfat  defaults                  0 1
 ```
 
 Edit [/etc/crypttab](https://linux.die.net/man/5/crypttab) and add an entry with your encrypted (raw) partition's UUID:
