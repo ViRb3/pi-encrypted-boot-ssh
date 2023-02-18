@@ -1,6 +1,6 @@
 # WiFi USB Support
 
-This guide will show you how to set up a WiFi USB dongle for use during initramfs.
+This guide will show you how to set up a WiFi USB dongle for use during initramfs. The steps here are intended for Ubuntu, slight changes will be necessary for Raspberry Pi OS.
 
 ## Installing driver
 

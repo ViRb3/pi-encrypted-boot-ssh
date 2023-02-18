@@ -1,6 +1,14 @@
-# WiFi Support
+# WiFi USB Support
 
-This guide will show you how to set up the Raspberry Pi's built-in WiFi module for use during initramfs. The steps here are intended for Ubuntu, slight changes will be necessary for Raspberry Pi OS.
+This guide will show you how to set up a WiFi USB dongle for use during initramfs. The steps here are intended for Raspberry Pi OS, slight changes will be necessary for Ubuntu.
+
+## Installing driver
+
+The steps below are written for the [Comfast CF-952AX](https://www.aliexpress.us/item/1005004469569274.html) USB dongle, which uses the Mediatek MT7921AU driver. The driver is part of the Linux kernel starting from 5.18, but currently the latest stable Raspberry Pi OS uses 5.15. However, it is trivial to update to 6.1 — run the below, adjusting the variables for your board:
+
+```sh
+WANT_PI64=1 WANT_64BIT=1 rpi-update
+```
 
 ## Set up initramfs
 
@@ -15,18 +23,18 @@ Create the following files and customize them if necessary:
   {
       echo "$PREREQ"
   }
-
+  
   case $1 in
   prereqs)
       prereqs
       exit 0
       ;;
   esac
-
+  
   sleep 1
   /sbin/wpa_supplicant -i wlan0 -c /etc/wpa_supplicant.conf -P /run/initram-wpa_supplicant.pid -B
   ```
-
+  
 - `/etc/initramfs-tools/hooks/enable-wireless`
 
   ```bash
@@ -43,21 +51,17 @@ Create the following files and customize them if necessary:
           exit 0
           ;;
   esac
-
+  
   . /usr/share/initramfs-tools/hook-functions
-
+  
   copy_exec /sbin/wpa_supplicant
-
+  
   # copy WiFi driver
-  copy_modules_dir kernel/drivers/net/wireless/broadcom/brcm80211/brcmfmac
-  # copy additional firmware files, ignoring error if they are already copied
-  for f in /lib/firmware/brcm/brcmfmac*; do
-  	copy_file firmware "$f" || true
-  done
-
+  manual_add_modules mt7921u
+  
   copy_file config /etc/initramfs-tools/wpa_supplicant.conf /etc/wpa_supplicant.conf
   ```
-
+  
 - `/etc/initramfs-tools/scripts/init-bottom/kill_wireless`
 
   ```bash
@@ -67,22 +71,19 @@ Create the following files and customize them if necessary:
   {
       echo "$PREREQ"
   }
-
+  
   case $1 in
   prereqs)
       prereqs
       exit 0
       ;;
   esac
-
+  
   # allow the decrypted OS to handle WiFi on its own
   kill $(cat /run/initram-wpa_supplicant.pid)
   ip link set wlan0 down
-  # created by initramfs
-  # for some reason it lists wlan0 as ethernet, which breaks netplan - remove it
-  rm -f /run/netplan/wlan0.yaml
   ```
-
+  
 - `/etc/initramfs-tools/wpa_supplicant.conf`
 
   ```bash
@@ -105,33 +106,15 @@ chmod +x /etc/initramfs-tools/hooks/enable-wireless
 chmod +x /etc/initramfs-tools/scripts/init-bottom/kill_wireless
 ```
 
-Set up WiFi for the decrypted OS. On Ubuntu, you do this by creating e.g. `/etc/netplan/10-user.yaml`:
+Set up WiFi for the decrypted OS by copying your initramfs `wpa_supplicant.conf` to the `/boot` directory:
 
-```yaml
-network:
-  version: 2
-  ethernets:
-    eth0:
-      dhcp4: true
-      optional: true
-  wifis:
-    wlan0:
-      optional: true
-      access-points:
-        "Foo":
-          password: "Bar"
-      dhcp4: true
+```sh
+cp /etc/initramfs-tools/wpa_supplicant.conf /boot/wpa_supplicant.conf
 ```
 
 You're done! Follow the rest of the guide to finish building your initramfs.
 
 ## Resources
 
-- https://gist.github.com/telenieko/d17544fc7e4b347beffa87252393384c
-- https://morfikov.github.io/post/wsparcie-dla-wifi-w-initramfs-initrd-by-odszyfrowac-luks-przez-ssh-bezprzewodowo/
-- https://morfikov.github.io/post/odszyfrowanie-luks-przez-ssh-z-poziomu-initramfs-initrd-na-raspberry-pi/
-- https://github.com/endlessm/linux-firmware/tree/master/brcm
-- https://forums.gentoo.org/viewtopic-t-1040452-start-0.html
-- https://github.com/lamby/initramfs-tools/blob/pass-reproducible-option/hook-functions
-- https://github.com/unixabg/cryptmypi/blob/master/hooks/0000-experimental-initramfs-wifi.hook
-- https://askubuntu.com/questions/1250133/interface-ip-conflict-after-dropbear-initramfs-boot
+- [Wireless-Builtin.md](Wireless-Builtin.md)
+- https://github.com/morrownr/USB-WiFi/blob/main/home/USB_WiFi_Adapters_that_are_supported_with_Linux_in-kernel_drivers.md
