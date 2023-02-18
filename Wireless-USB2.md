@@ -31,10 +31,15 @@ Create the following files and customize them if necessary:
       ;;
   esac
   
-  sleep 1
+  echo "Waiting for wlan device to come up..."
+  while [ ! -d "/sys/class/net/wlan0" ]; do
+      sleep 1
+  done
+  
+  echo "Initializing wpa-supplicant..."
   /sbin/wpa_supplicant -i wlan0 -c /etc/wpa_supplicant.conf -P /run/initram-wpa_supplicant.pid -B
   ```
-  
+
 - `/etc/initramfs-tools/hooks/enable-wireless`
 
   ```bash
@@ -80,6 +85,7 @@ Create the following files and customize them if necessary:
   esac
   
   # allow the decrypted OS to handle WiFi on its own
+  echo "Stopping wlan device..."
   kill $(cat /run/initram-wpa_supplicant.pid)
   ip link set wlan0 down
   ```
@@ -110,6 +116,12 @@ Set up WiFi for the decrypted OS by copying your initramfs `wpa_supplicant.conf`
 
 ```sh
 cp /etc/initramfs-tools/wpa_supplicant.conf /boot/wpa_supplicant.conf
+```
+
+You may want to disable onboard WiFi from the decrypted OS so it doesn't conflict with your external USB card:
+
+```sh
+echo "dtoverlay=disable-wifi" >> /boot/config.txt
 ```
 
 You're done! Follow the rest of the guide to finish building your initramfs.

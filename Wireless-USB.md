@@ -21,30 +21,28 @@ mkinitramfs -o /boot/initrd.img "5.15.0-1005-raspi"
 Prepare the driver:
 
 ```bash
-git clone https://github.com/morrownr/88x2bu-20210702.git
+git clone https://github.com/ViRb3/88x2bu-20210702.git
 cd 88x2bu-20210702
-./ARM64_RPI.sh
 ```
 
 By default, this driver's Makefile will use all of your CPU cores. This has the side effect of also using additional RAM, and if you're on a 1GB RAM device, it may run out of memory. To work around, disable the parallel build:
 
 ```bash
-sed -i 's/-j$(nproc)//g' dkms.conf
+sed -i 's/-j$sproc/-j1/g' dkms-make.sh
 ```
 
 Build and install the driver:
 
 ```bash
-./install-driver.sh
+KVER="5.15.0-1005-raspi" ./install-driver.sh
 ```
 
 To prevent issues, disable all power-saving features:
 
-- `/etc/modprobe.d/88x2bu.conf`
-
-  ```bash
-  options 88x2bu rtw_power_mgnt=0 rtw_ips_mode=0 rtw_enusbss=0
-  ```
+```bash
+./edit-options.sh
+options 88x2bu rtw_power_mgnt=0 rtw_ips_mode=0 rtw_enusbss=0
+```
 
 If you are connecting the card to a USB3 port, also add `rtw_switch_usb_mode=1` to force it into USB3 mode. Note that the Raspberry Pi 4B specifically has an issue where the driver silently stops working in USB3 mode when acting as AP or when downloading large volumes of data (~120GB). To work around, leave as default or add `rtw_switch_usb_mode=2` to force USB2 mode.
 
@@ -70,8 +68,13 @@ Create the following files and customize them if necessary:
       exit 0
       ;;
   esac
-
-  sleep 1
+  
+  echo "Waiting for wlan device to come up..."
+  while [ ! -d "/sys/class/net/wlx112233445566" ]; do
+      sleep 1
+  done
+  
+  echo "Initializing wpa-supplicant..."
   /sbin/wpa_supplicant -i wlx112233445566 -c /etc/wpa_supplicant.conf -P /run/initram-wpa_supplicant.pid -B
   ```
 
@@ -120,6 +123,7 @@ Create the following files and customize them if necessary:
   esac
 
   # allow the decrypted OS to handle WiFi on its own
+  echo "Stopping wlan device..."
   kill $(cat /run/initram-wpa_supplicant.pid)
   ip link set wlx112233445566 down
   # created by initramfs
@@ -165,6 +169,12 @@ network:
         "Foo":
           password: "Bar"
       dhcp4: true
+```
+
+You may want to disable onboard WiFi from the decrypted OS so it doesn't conflict with your external USB card:
+
+```sh
+echo "dtoverlay=disable-wifi" >> /boot/config.txt
 ```
 
 You're done! Follow the rest of the guide to finish building your initramfs.

@@ -22,8 +22,13 @@ Create the following files and customize them if necessary:
       exit 0
       ;;
   esac
-
-  sleep 1
+  
+  echo "Waiting for wlan device to come up..."
+  while [ ! -d "/sys/class/net/wlan0" ]; do
+      sleep 1
+  done
+  
+  echo "Initializing wpa-supplicant..."
   /sbin/wpa_supplicant -i wlan0 -c /etc/wpa_supplicant.conf -P /run/initram-wpa_supplicant.pid -B
   ```
 
@@ -76,6 +81,7 @@ Create the following files and customize them if necessary:
   esac
 
   # allow the decrypted OS to handle WiFi on its own
+  echo "Stopping wlan device..."
   kill $(cat /run/initram-wpa_supplicant.pid)
   ip link set wlan0 down
   # created by initramfs
