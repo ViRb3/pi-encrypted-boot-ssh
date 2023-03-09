@@ -61,8 +61,7 @@ Create two copies of the Raspberry Pi's Linux image — one to read from (base),
 If you're planning to install additional software (e.g. WiFi drivers), increase the size of the target image or you may not have enough space:
 
 ```bash
-apt install qemu-utils
-qemu-img resize pi-target.img +1G
+dd if=/dev/zero bs=1G count=1 >> pi-target.img
 parted pi-target.img resizepart 2 100%
 ```
 
