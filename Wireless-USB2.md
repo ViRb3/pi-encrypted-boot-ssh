@@ -4,11 +4,7 @@ This guide will show you how to set up a WiFi USB dongle for use during initramf
 
 ## Installing driver
 
-The steps below are written for the [Comfast CF-952AX](https://www.aliexpress.us/item/1005004469569274.html) USB dongle, which uses the Mediatek MT7921AU driver. The driver is part of the Linux kernel starting from 5.18, but currently the latest stable Raspberry Pi OS uses 5.15. However, it is trivial to update to 6.1 — just upgrade your packages:
-
-```sh
-apt update && apt upgrade
-```
+The steps below are written for the [Comfast CF-952AX](https://www.aliexpress.us/item/1005004469569274.html) USB dongle, which uses the Mediatek MT7921AU driver. The driver is part of the Linux kernel starting from 6.1, so make sure you have a recent image (after 05/2023).
 
 ## Set up initramfs
 
