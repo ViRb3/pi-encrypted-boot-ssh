@@ -1,6 +1,6 @@
 # Raspberry Pi Encrypted Boot with SSH
 
-> ⚠️ This guide is only supported for Raspberry Pi [3B](https://www.raspberrypi.org/products/raspberry-pi-3-model-b/) & [4B](https://www.raspberrypi.org/products/raspberry-pi-4-model-b/) with [Ubuntu Server 22.04](https://ubuntu.com/download/raspberry-pi) and [Raspberry Pi OS Lite 11 (5.15)](https://www.raspberrypi.com/software/operating-systems/). \
+> ⚠️ This guide is only supported for Raspberry Pi [3B](https://www.raspberrypi.org/products/raspberry-pi-3-model-b/) & [4B](https://www.raspberrypi.org/products/raspberry-pi-4-model-b/) with [Ubuntu Server 22.04](https://ubuntu.com/download/raspberry-pi) and [Raspberry Pi OS Lite 11 (6.1)](https://www.raspberrypi.com/software/operating-systems/). \
 > Other platforms and distributions may work, but there will be unexpected issues or side effects.
 
 ## Introduction
@@ -37,7 +37,7 @@ This guide operates directly on an image file and therefore does not require an 
 
 ## Requirements
 
-- A Raspberry Pi Linux image (e.g. [Ubuntu Server 22.04](https://ubuntu.com/download/raspberry-pi) or [Raspberry Pi OS Lite 11 (5.15)](https://www.raspberrypi.com/software/operating-systems/))
+- A Raspberry Pi Linux image (e.g. [Ubuntu Server 22.04](https://ubuntu.com/download/raspberry-pi) or [Raspberry Pi OS Lite 11 (6.1)](https://www.raspberrypi.com/software/operating-systems/))
 - A computer (host) running Linux (e.g. [Xubuntu 22.04](https://xubuntu.org/download))
 
   > :warning: **NOTE:** Your host's Linux should be as similar as possible to the Raspberry Pi's Linux. If you are preparing Ubuntu 22.04 for the Raspberry Pi, use the same version on the host, otherwise you may encounter issues inside the chroot.
