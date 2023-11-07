@@ -4,7 +4,7 @@ This guide will show you how to set up a WiFi USB dongle for use during initramf
 
 ## Installing driver
 
-The steps below are written for the [Comfast CF-952AX](https://www.aliexpress.us/item/1005004469569274.html) USB dongle, which uses the Mediatek MT7921AU driver. The driver is part of the Linux kernel starting from 6.1, so make sure you have a recent image (after 05/2023).
+The steps below are written for the [Alfa AWUS036AXML](https://alfa-network.eu/alfa-usb-adapter-awus036axml) USB dongle, which uses the Mediatek MT7921AU driver. The driver is part of the Linux kernel starting from 6.1.
 
 ## Set up initramfs
 
@@ -100,18 +100,14 @@ Create the following files and customize them if necessary:
   }
   ```
 
+Note that this will only set up WiFi in the initramfs. The decrypted OS needs to be configured separately.
+
 Chmod all scripts you just created:
 
 ```bash
 chmod +x /etc/initramfs-tools/scripts/init-premount/a_enable_wireless
 chmod +x /etc/initramfs-tools/hooks/enable-wireless
 chmod +x /etc/initramfs-tools/scripts/init-bottom/kill_wireless
-```
-
-Set up WiFi for the decrypted OS by copying your initramfs `wpa_supplicant.conf` to the `/boot` directory:
-
-```sh
-cp /etc/initramfs-tools/wpa_supplicant.conf /boot/wpa_supplicant.conf
 ```
 
 You may want to disable onboard WiFi from the decrypted OS so it doesn't conflict with your external USB card:
