@@ -1,13 +1,11 @@
 # Raspberry Pi Encrypted Boot with SSH
 
-> ⚠️ This guide is only supported for Raspberry Pi [4B](https://www.raspberrypi.org/products/raspberry-pi-4-model-b/) with [Raspberry Pi OS Lite 64-bit 2023-10-10](https://www.raspberrypi.com/software/operating-systems/). \
-> Other platforms and distributions may work, but there will be unexpected issues or side effects.
+> ⚠️ This guide is only tested on the [Raspberry Pi 5](https://www.raspberrypi.com/products/raspberry-pi-5/) with [Raspberry Pi OS Lite 64-bit 2023-12-11](https://www.raspberrypi.com/software/operating-systems/). \
+> Other platforms and distributions may work, but there may be unexpected issues or side effects.
 
 ## Introduction
 
 This guide will show you how to encrypt your Raspberry Pi's root partition and set up an [initramfs](https://en.wikipedia.org/wiki/Initial_ramdisk) that will prompt for the password, decrypt the partition and gracefully resume boot. You will also learn how to enable SSH during this pre-boot stage, allowing you to unlock the partition remotely. There are also optional steps for WiFi setup.
-
-While the steps are written for the Raspberry Pi, they should be easily transferrable to other SBCs and computers as a whole. However, only the Raspberry Pi is officially supported by this guide.
 
 This guide operates directly on an image file and therefore does not require an SD card for the setup. The resulting image can be flashed to an SD card as usual.
 
@@ -35,7 +33,7 @@ This guide operates directly on an image file and therefore does not require an 
 
 ## Requirements
 
-- A Raspberry Pi Linux image (e.g. [Raspberry Pi OS Lite 64-bit 2023-10-10)](https://www.raspberrypi.com/software/operating-systems/))
+- A Raspberry Pi Linux image (e.g. [Raspberry Pi OS Lite 64-bit 2023-12-11](https://www.raspberrypi.com/software/operating-systems/))
 - A computer (host) running Linux (e.g. [Kali Linux 2023.2](https://www.kali.org/get-kali/#kali-platforms))
 
   > :warning: **NOTE:** Your host's Linux should be as similar as possible to the Raspberry Pi's Linux. If you are preparing Debian 12/kernel 6.1 for the Raspberry Pi, use similar versions on the host, otherwise you may encounter issues inside the chroot.
@@ -99,12 +97,12 @@ Replace the target image's root partition with a new, encrypted partition:
 
 > :warning: **NOTE:**
 >
-> In this example we will use [aes-adiantum](https://github.com/google/adiantum) as the encryption method since it is much faster on targets that lack hardware AES acceleration. Ensure that both the host's and Pi's kernel (>= [5.0.0](https://kernelnewbies.org/Linux_5.0#Adiantum_file_system_encryption_for_low_power_devices), must include .ko) and [cryptsetup](https://linux.die.net/man/8/cryptsetup) (>= [2.0.6](https://mirrors.edge.kernel.org/pub/linux/utils/cryptsetup/v2.0/v2.0.6-ReleaseNotes)) support your encryption method.
+> The default encryption algorithm is `aes-xts-plain64`, which is fast only on the Raspberry Pi 5 due to its hardware AES acceleration. If you have an older generation, then use [aes-adiantum](https://github.com/google/adiantum) instead via `-c xchacha20,aes-adiantum-plain64`. It is much faster than AES in software.
 >
-> By default cryptsetup will use a memory-hard PBKDF algorithm that requires 4GB of RAM. With these settings, you are likely to exceed the Raspberry Pi's maximum RAM and make it impossible to unlock the partition. To work around this, set the [--pbkdf-memory](https://linux.die.net/man/8/cryptsetup) and [--pbkdf-parallel](https://linux.die.net/man/8/cryptsetup) arguments so when you multiply them, the result is less than your Pi's total RAM:
+> By default cryptsetup will [benchmark](https://man7.org/linux/man-pages/man8/cryptsetup-luksformat.8.html) your host and use a memory-hard PBKDF algorithm that can require up to 4GB of RAM. If these settings exceed your Raspberry Pi's available RAM, it will make it impossible to unlock the partition. To work around this, set the [--pbkdf-memory](https://man7.org/linux/man-pages/man8/cryptsetup-luksformat.8.html) and [--pbkdf-parallel](https://man7.org/linux/man-pages/man8/cryptsetup-luksformat.8.html) arguments so when you multiply them, the result is less than your Pi's total RAM. For example: `--pbkdf-memory 512000 --pbkdf-parallel=1`
 
 ```sh
-cryptsetup luksFormat -c xchacha20,aes-adiantum-plain64 --pbkdf-memory 512000 --pbkdf-parallel=1 /dev/mapper/loop1p2
+cryptsetup luksFormat /dev/mapper/loop1p2
 ```
 
 Open (decrypt) the new partition:
@@ -252,22 +250,36 @@ Note your kernel version. If there are multiple, choose the one you want to run.
 ls /lib/modules/
 ```
 
+> :warning: **NOTE:**
+>
+> Starting with the Raspberry Pi 5, the default kernel page size is 16K instead of 4K. This breaks some software, but more importantly, is experimental in btrfs with 4K sector size disks:
+>
+> > BTRFS warning (device dm-1): read-write for sector size 4096 with page size 16384 is experimental
+>
+> For this reason, you may want to switch back to the old kernel by adding the following to your `/boot/config.txt`:
+>
+> ```sh
+> echo "kernel=kernel8.img" >> /boot/config.txt
+> echo "initramfs initramfs8 followkernel" >> /boot/config.txt
+> ```
+
 Build the new initramdisk using the kernel version from above. The `initramfs-tools` package parses the compression method from a file that doesn't exist, so we need to create it:
 
 ```sh
-# RPi5 = 2712, all others = v8
-echo "CONFIG_RD_ZSTD=y" > /boot/config-6.1.0-rpi4-rpi-v8
-mkinitramfs -o /boot/initramfs8 "6.1.0-rpi4-rpi-v8"
-rm /boot/config-6.1.0-rpi4-rpi-v8
+# RPi5 with 16K pages = 2712, RPI5 or all others with 4K pages = v8
+kversion="6.1.0-rpi7-rpi-v8"
+echo "CONFIG_RD_ZSTD=y" > /boot/config-$kversion
+mkinitramfs -o /boot/initramfs8 $kversion
+rm /boot/config-$kversion
 ```
 
-Customize first run/init as it will break the encrypted setup and prevent booting:
+Customize first run/init in `/boot/cmdline.txt` as it will break the encrypted setup and prevent booting:
 
 ```sh
 # Original:
-console=serial0,115200 console=tty1 root=/dev/mapper/crypted cryptdevice=UUID=aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa:crypted rootfstype=ext4 fsck.repair=yes rootwait quiet init=/usr/lib/raspberrypi-sys-mods/firstboot
+[...] quiet init=/usr/lib/raspberrypi-sys-mods/firstboot
 # Replace with:
-console=serial0,115200 console=tty1 root=/dev/mapper/crypted cryptdevice=UUID=aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa:crypted rootfstype=ext4 fsck.repair=yes rootwait systemd.run=/boot/firstrun.sh systemd.run_success_action=reboot systemd.unit=kernel-command-line.target
+[...] systemd.run=/boot/firstrun.sh systemd.run_success_action=reboot systemd.unit=kernel-command-line.target
 ```
 
 Create `/boot/firstrun.sh` and customize it for your needs. Most of these scripts allow additional configuration, so feel free to check their source:
@@ -327,7 +339,10 @@ You are now ready to flash `pi-target.img` to an SD card.
 
 Boot the Raspberry Pi with the new SD card. It will obtain an IP address from the DHCP server and start listening for SSH connections. To decrypt the root partition and continue boot, from any shell, simply run `cryptroot-unlock`.
 
-The first time only, the system will run the init script from before and reboot back into the initramfs. Proceed to decrypt it again.
+The first time only:
+
+1. Once decrypted, the system will power off. The reason for this is currently unknown. Restart the device and decrypt again.
+2. The decrypted system will run the init script from before and reboot back into the initramfs. Proceed to decrypt one last time.
 
 Once booted into the decrypted system, you will notice that the root partition is still sized at ~3GB, no matter how much space you have on the SD card. To fix this, resize the partition:
 
