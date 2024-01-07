@@ -373,6 +373,11 @@ Host box-initramfs
 	UserKnownHostsFile ~/.ssh/known_hosts.initramfs
 ```
 
+## Troubleshooting
+
+* **`Exec format error` when executing the `chroot` command**  
+  Make sure `binfmt-support` is installed. When using Windows Subsystem for Linux (WSL), it might be neccesarry to call `update-binfmts --enable` manually after installing (see [this issue](https://github.com/microsoft/WSL/issues/7181#issuecomment-885474697)).
+
 ## Resources
 
 - https://www.kali.org/docs/arm/raspberry-pi-with-luks-disk-encryption/
