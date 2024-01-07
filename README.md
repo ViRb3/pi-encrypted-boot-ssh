@@ -42,7 +42,8 @@ This guide operates directly on an image file and therefore does not require an 
 
 Install dependencies:
 
-- You can skip `qemu-user-static` if your host Linux's architecture matches that of the Raspberry Pi's Linux image.
+- You can skip `binfmt-support` and `qemu-user-static` if your host Linux's architecture matches that of the Raspberry Pi's Linux image.
+- If your host Linux doesn't use systemd, such as WSL on Windows, you need to manually run `update-binfmts --enable` after installing `binfmt-support`.
 
 ```sh
 apt update
