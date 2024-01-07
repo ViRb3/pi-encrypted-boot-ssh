@@ -46,7 +46,7 @@ Install dependencies:
 
 ```sh
 apt update
-apt install -y kpartx cryptsetup-bin qemu-user-static
+apt install -y parted kpartx cryptsetup-bin rsync binfmt-support qemu-user-static
 ```
 
 Create two copies of the Raspberry Pi's Linux image — one to read from (base), and one to write to (target):
