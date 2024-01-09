@@ -267,10 +267,9 @@ ls /lib/modules/
 Build the new initramdisk using the kernel version from above. The `initramfs-tools` package parses the compression method from a file that doesn't exist, so we need to create it:
 
 ```sh
-# RPi5 with 16K pages = 2712, RPI5 or all others with 4K pages = v8
-kversion="6.1.0-rpi7-rpi-v8"
+kversion="6.1.0-rpi7-rpi-v8" # "6.1.0-rpi7-rpi-2712" for 16k pages
 echo "CONFIG_RD_ZSTD=y" > /boot/config-$kversion
-mkinitramfs -o /boot/initramfs8 $kversion
+mkinitramfs -o /boot/initramfs8 $kversion # "initramfs_2712" for 16K pages
 rm /boot/config-$kversion
 ```
 
