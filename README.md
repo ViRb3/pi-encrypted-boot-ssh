@@ -1,6 +1,7 @@
 # Raspberry Pi Encrypted Boot with SSH
 
-> ⚠️ This guide is only tested on the [Raspberry Pi 5](https://www.raspberrypi.com/products/raspberry-pi-5/) with [Raspberry Pi OS Lite 64-bit 2023-12-11](https://www.raspberrypi.com/software/operating-systems/). \
+> [!IMPORTANT]
+> This guide is only tested on the [Raspberry Pi 5](https://www.raspberrypi.com/products/raspberry-pi-5/) with [Raspberry Pi OS Lite 64-bit 2025-12-04](https://www.raspberrypi.com/software/operating-systems/).
 > Other platforms and distributions may work, but there may be unexpected issues or side effects.
 
 ## Introduction
@@ -9,34 +10,15 @@ This guide will show you how to encrypt your Raspberry Pi's root partition and s
 
 This guide operates directly on an image file and therefore does not require an SD card for the setup. The resulting image can be flashed to an SD card as usual.
 
-## Table of Content
-
-- [Raspberry Pi Encrypted Boot with SSH](#raspberry-pi-encrypted-boot-with-ssh)
-  - [Introduction](#introduction)
-  - [Table of Content](#table-of-content)
-  - [Requirements](#requirements)
-  - [On the host](#on-the-host)
-  - [In the chroot](#in-the-chroot)
-    - [Prepare](#prepare)
-    - [Device configuration](#device-configuration)
-    - [Cryptsetup](#cryptsetup)
-    - [SSH](#ssh)
-    - [WiFi support](#wifi-support)
-      - [Raspberry Pi OS](#raspberry-pi-os)
-      - [Ubuntu (obsolete)](#ubuntu-obsolete)
-    - [Build initramfs](#build-initramfs)
-    - [Finish](#finish)
-  - [On the host](#on-the-host-1)
-  - [On the Raspberry Pi](#on-the-raspberry-pi)
-  - [Avoiding SSH key collisions](#avoiding-ssh-key-collisions)
-  - [Resources](#resources)
+[TOC]
 
 ## Requirements
 
-- A Raspberry Pi Linux image (e.g. [Raspberry Pi OS Lite 64-bit 2023-12-11](https://www.raspberrypi.com/software/operating-systems/))
-- A computer (host) running Linux (e.g. [Kali Linux 2023.2](https://www.kali.org/get-kali/#kali-platforms))
+- A Raspberry Pi Linux image (e.g. [Raspberry Pi OS Lite 64-bit 2025-12-04](https://www.raspberrypi.com/software/operating-systems/))
+- A computer (host) running Linux (e.g. [Kali Linux 2025.3](https://www.kali.org/get-kali/#kali-platforms))
 
-  > :warning: **NOTE:** Your host's Linux should be as similar as possible to the Raspberry Pi's Linux. If you are preparing Debian 12/kernel 6.1 for the Raspberry Pi, use similar versions on the host, otherwise you may encounter issues inside the chroot.
+  > [!WARNING]
+  > Your host's Linux should be as similar as possible to the Raspberry Pi's Linux. If you are preparing Debian 13 (Trixie)/kernel 6.12 for the Raspberry Pi, use similar versions on the host, otherwise you may encounter issues inside the chroot.
 
 ## On the host
 
@@ -79,12 +61,12 @@ Run [lsblk](https://linux.die.net/man/8/lsblk) and verify the process was succes
 
 ```sh
 NAME      MAJ:MIN RM  SIZE RO TYPE MOUNTPOINT # COMMENT
-loop0       7:0    0  3.3G  0 loop            # pi-base.img
-├─loop0p1 253:0    0  256M  0 part            # ├─ boot
-└─loop0p2 253:1    0    3G  0 part            # └─ root
-loop1       7:1    0  3.3G  1 loop            # pi-target.img
-├─loop1p1 253:2    0  256M  1 part            # ├─ boot
-└─loop1p2 253:3    0    3G  1 part            # └─ root
+loop0       7:0    0  2.8G  1 loop            # pi-base.img (readonly)
+├─loop0p1 253:0    0  512M  1 part            # ├─ boot
+└─loop0p2 253:1    0  2.3G  1 part            # └─ root
+loop1       7:1    0  3.8G  0 loop            # pi-target.img
+├─loop1p1 253:2    0  512M  0 part            # ├─ boot
+└─loop1p2 253:3    0  3.3G  0 part            # └─ root
 ```
 
 Mount the base image's root partition:
@@ -96,10 +78,10 @@ mount /dev/mapper/loop0p2 /mnt/original/
 
 Replace the target image's root partition with a new, encrypted partition:
 
-> :warning: **NOTE:**
->
+> [!WARNING]
 > The default encryption algorithm is `aes-xts-plain64`, which is fast only on the Raspberry Pi 5 due to its hardware AES acceleration. If you have an older generation, then use [aes-adiantum](https://github.com/google/adiantum) instead via `-c xchacha20,aes-adiantum-plain64`. It is much faster than AES in software.
->
+
+> [!CAUTION]
 > By default cryptsetup will [benchmark](https://man7.org/linux/man-pages/man8/cryptsetup-luksformat.8.html) your host and use a memory-hard PBKDF algorithm that can require up to 4GB of RAM. If these settings exceed your Raspberry Pi's available RAM, it will make it impossible to unlock the partition. To work around this, set the [--pbkdf-memory](https://man7.org/linux/man-pages/man8/cryptsetup-luksformat.8.html) and [--pbkdf-parallel](https://man7.org/linux/man-pages/man8/cryptsetup-luksformat.8.html) arguments so when you multiply them, the result is less than your Pi's total RAM. For example: `--pbkdf-memory 512000 --pbkdf-parallel=1`
 
 ```sh
@@ -129,8 +111,8 @@ rsync --archive --hard-links --acls --xattrs --one-file-system --numeric-ids --i
 Set up a [chroot](https://linux.die.net/man/1/chroot) by mounting the target image's boot partition and required virtual filesystems from the host:
 
 ```sh
-mkdir -p /mnt/chroot/boot/
-mount /dev/mapper/loop1p1 /mnt/chroot/boot/
+mkdir -p /mnt/chroot/boot/firmware/
+mount /dev/mapper/loop1p1 /mnt/chroot/boot/firmware/
 mount -t proc none /mnt/chroot/proc/
 mount -t sysfs none /mnt/chroot/sys/
 mount -o bind /dev /mnt/chroot/dev/
@@ -179,7 +161,7 @@ Edit [/etc/crypttab](https://linux.die.net/man/5/crypttab) and add an entry with
 crypted UUID=aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa none luks,initramfs
 ```
 
-Edit `/boot/cmdline.txt` and update the root entry:
+Edit `/boot/firmware/cmdline.txt` and update the root entry:
 
 ```sh
 # Original:
@@ -251,57 +233,58 @@ Note your kernel version. If there are multiple, choose the one you want to run.
 ls /lib/modules/
 ```
 
-> :warning: **NOTE:**
+> [!NOTE]
+> Starting with the Raspberry Pi 5, the default kernel page size is 16K instead of 4K. This breaks some software, but more importantly, is experimental in btrfs with 4K sector size disks until kernel 6.15:
 >
-> Starting with the Raspberry Pi 5, the default kernel page size is 16K instead of 4K. This breaks some software, but more importantly, is experimental in btrfs with 4K sector size disks:
+> ```
+> BTRFS warning (device dm-1): read-write for sector size 4096 with page size 16384 is experimental
+> ```
 >
-> > BTRFS warning (device dm-1): read-write for sector size 4096 with page size 16384 is experimental
->
-> For this reason, you may want to switch back to the old kernel by adding the following to your `/boot/config.txt`:
+> For this reason, you may want to switch back to the old kernel by adding the following to your `/boot/firmware/config.txt`:
 >
 > ```sh
-> echo "kernel=kernel8.img" >> /boot/config.txt
-> echo "initramfs initramfs8 followkernel" >> /boot/config.txt
+> echo "kernel=kernel8.img" >> /boot/firmware/config.txt
+> echo "initramfs initramfs8 followkernel" >> /boot/firmware/config.txt
 > ```
 
-Build the new initramdisk using the kernel version from above. The `initramfs-tools` package parses the compression method from a file that doesn't exist, so we need to create it:
+Build the new initramdisk using the kernel version from above:
 
 ```sh
-kversion="6.1.0-rpi7-rpi-v8" # "6.1.0-rpi7-rpi-2712" for 16k pages
-echo "CONFIG_RD_ZSTD=y" > /boot/config-$kversion
-mkinitramfs -o /boot/initramfs8 $kversion # "initramfs_2712" for 16K pages
-rm /boot/config-$kversion
+kversion="6.12.47+rpt-rpi-v8" # "6.12.47+rpt-rpi-2712" for 16k pages
+mkinitramfs -o /boot/firmware/initramfs8 $kversion # "initramfs_2712" for 16K pages
 ```
 
-Customize first run/init in `/boot/cmdline.txt` as it will break the encrypted setup and prevent booting:
-
-```sh
-# Original:
-[...] quiet init=/usr/lib/raspberrypi-sys-mods/firstboot
-# Replace with:
-[...] systemd.run=/boot/firstrun.sh systemd.run_success_action=reboot systemd.unit=kernel-command-line.target
-```
-
-Create `/boot/firstrun.sh` and customize it for your needs. Most of these scripts allow additional configuration, so feel free to check their source:
+Raspberry Pi OS now uses a combination of cloudinit and systemd services to run its basic bootstrapping code. If you want to make any changes there, look under `/etc/cloud/`. For advanced configuration, Raspberry Pi Imager still uses the old firstboot script. If you want to configure the user, SSH or WLAN, then create `/boot/firmware/firstrun.sh` and customize it for your needs:
 
 ```sh
 #!/bin/bash
 set +e
 
-/usr/lib/raspberrypi-sys-mods/imager_custom enable_ssh
-/usr/lib/raspberrypi-sys-mods/regenerate_ssh_host_keys
-/usr/lib/userconf-pi/userconf 'pi'
-/usr/lib/raspberrypi-sys-mods/imager_custom set_wlan 'MyWiFi' 'pass1234' 'GB'
+/usr/lib/userconf-pi/userconf # USERNAME [PASS_HASH]
 
-rm -f /boot/firstrun.sh
-sed -i 's| systemd.run.*||g' /boot/cmdline.txt
+/usr/lib/raspberrypi-sys-mods/imager_custom set_hostname # HOSTNAME
+/usr/lib/raspberrypi-sys-mods/imager_custom import_ssh_id # USERID1 [USERID2]...
+/usr/lib/raspberrypi-sys-mods/imager_custom enable_ssh # [-k|--key-only]|[-p|--pass-auth] [-d|--disabled] [KEY_LINE1 [KEY_LINE2]...]
+/usr/lib/raspberrypi-sys-mods/imager_custom set_wlan # [-h|--hidden] [-p|--plain] SSID [PASS [COUNTRY]]
+/usr/lib/raspberrypi-sys-mods/imager_custom set_wlan_country # COUNTRY
+/usr/lib/raspberrypi-sys-mods/imager_custom set_keymap # KEYMAP
+/usr/lib/raspberrypi-sys-mods/imager_custom set_timezone # TIMEZONE
+
+rm -f /boot/firmware/firstrun.sh
+sed -i 's| systemd.run.*||g' /boot/firmware/cmdline.txt
 exit 0
 ```
 
 Make sure the newly created file is executable:
 
 ```sh
-chmod +x /boot/firstrun.sh
+chmod +x /boot/firmware/firstrun.sh
+```
+
+And finally append this to your `/boot/firmware/cmdline.txt`:
+
+```bash
+[...] systemd.run=/boot/firmware/firstrun.sh systemd.run_success_action=reboot systemd.unit=kernel-command-line.target
 ```
 
 ### Finish
@@ -319,7 +302,7 @@ history -c && exit
 Unmount everything and clean up any remaining artifacts:
 
 ```sh
-umount /mnt/chroot/boot
+umount /mnt/chroot/boot/firmware
 umount /mnt/chroot/sys
 umount /mnt/chroot/proc
 umount /mnt/chroot/dev/pts
