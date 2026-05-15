@@ -1,7 +1,7 @@
 # Raspberry Pi Encrypted Boot with SSH
 
 > [!IMPORTANT]
-> This guide is only tested on the [Raspberry Pi 5](https://www.raspberrypi.com/products/raspberry-pi-5/) with [Raspberry Pi OS Lite 64-bit 2025-12-04](https://www.raspberrypi.com/software/operating-systems/).
+> This guide is only tested on the [Raspberry Pi 5](https://www.raspberrypi.com/products/raspberry-pi-5/) with [Raspberry Pi OS Lite 64-bit 2026-04-21](https://www.raspberrypi.com/software/operating-systems/).
 > Other platforms and distributions may work, but there may be unexpected issues or side effects.
 
 ## Introduction
@@ -10,15 +10,13 @@ This guide will show you how to encrypt your Raspberry Pi's root partition and s
 
 This guide operates directly on an image file and therefore does not require an SD card for the setup. The resulting image can be flashed to an SD card as usual.
 
-[TOC]
-
 ## Requirements
 
-- A Raspberry Pi Linux image (e.g. [Raspberry Pi OS Lite 64-bit 2025-12-04](https://www.raspberrypi.com/software/operating-systems/))
+- A Raspberry Pi Linux image (e.g. [Raspberry Pi OS Lite 64-bit 2026-04-21](https://www.raspberrypi.com/software/operating-systems/))
 - A computer (host) running Linux (e.g. [Kali Linux 2025.3](https://www.kali.org/get-kali/#kali-platforms))
 
-  > [!WARNING]
-  > Your host's Linux should be as similar as possible to the Raspberry Pi's Linux. If you are preparing Debian 13 (Trixie)/kernel 6.12 for the Raspberry Pi, use similar versions on the host, otherwise you may encounter issues inside the chroot.
+> [!WARNING]
+> Your host's Linux should be as similar as possible to the Raspberry Pi's Linux. If you are preparing Debian 13 (Trixie)/kernel 6.18 for the Raspberry Pi, use similar versions on the host, otherwise you may encounter issues inside the chroot.
 
 ## On the host
 
@@ -61,12 +59,12 @@ Run [lsblk](https://linux.die.net/man/8/lsblk) and verify the process was succes
 
 ```sh
 NAME      MAJ:MIN RM  SIZE RO TYPE MOUNTPOINT # COMMENT
-loop0       7:0    0  2.8G  1 loop            # pi-base.img (readonly)
+loop0       7:0    0    3G  1 loop            # pi-base.img (readonly)
 ├─loop0p1 253:0    0  512M  1 part            # ├─ boot
-└─loop0p2 253:1    0  2.3G  1 part            # └─ root
-loop1       7:1    0  3.8G  0 loop            # pi-target.img
+└─loop0p2 253:1    0  2.5G  1 part            # └─ root
+loop1       7:1    0    4G  0 loop            # pi-target.img
 ├─loop1p1 253:2    0  512M  0 part            # ├─ boot
-└─loop1p2 253:3    0  3.3G  0 part            # └─ root
+└─loop1p2 253:3    0  3.5G  0 part            # └─ root
 ```
 
 Mount the base image's root partition:
@@ -82,7 +80,7 @@ Replace the target image's root partition with a new, encrypted partition:
 > The default encryption algorithm is `aes-xts-plain64`, which is fast only on the Raspberry Pi 5 due to its hardware AES acceleration. If you have an older generation, then use [aes-adiantum](https://github.com/google/adiantum) instead via `-c xchacha20,aes-adiantum-plain64`. It is much faster than AES in software.
 
 > [!CAUTION]
-> By default cryptsetup will [benchmark](https://man7.org/linux/man-pages/man8/cryptsetup-luksformat.8.html) your host and use a memory-hard PBKDF algorithm that can require up to 4GB of RAM. If these settings exceed your Raspberry Pi's available RAM, it will make it impossible to unlock the partition. To work around this, set the [--pbkdf-memory](https://man7.org/linux/man-pages/man8/cryptsetup-luksformat.8.html) and [--pbkdf-parallel](https://man7.org/linux/man-pages/man8/cryptsetup-luksformat.8.html) arguments so when you multiply them, the result is less than your Pi's total RAM. For example: `--pbkdf-memory 512000 --pbkdf-parallel=1`
+> By default cryptsetup will [benchmark](https://man7.org/linux/man-pages/man8/cryptsetup-luksformat.8.html) your host and choose a LUKS2 Argon2 memory cost between 64 MiB and 1 GiB for unlocking. If this exceeds your Raspberry Pi's available RAM, it can make the partition impossible to unlock. To work around this, set the memory cost in KiB via [--pbkdf-memory](https://man7.org/linux/man-pages/man8/cryptsetup-luksformat.8.html). You can also lower the thread count via [--pbkdf-parallel](https://man7.org/linux/man-pages/man8/cryptsetup-luksformat.8.html). For example: `--pbkdf-memory 512000 --pbkdf-parallel=1`
 
 ```sh
 cryptsetup luksFormat /dev/mapper/loop1p2
@@ -129,11 +127,11 @@ LANG=C chroot /mnt/chroot/ /bin/bash
 
 ### Prepare
 
-Install the dependencies:
+Install the dependencies and update the Raspberry Pi kernel. For Raspberry Pi 5, keep both the `2712` and `v8` kernel packages installed so you can choose between the 16K and 4K page-size kernels:
 
 ```sh
 apt update
-apt install -y busybox cryptsetup dropbear-initramfs
+apt install -y busybox cryptsetup dropbear-initramfs xz-utils linux-image-rpi-2712 linux-image-rpi-v8
 ```
 
 ### Device configuration
@@ -201,14 +199,34 @@ The default timeout when waiting for decryption (10 seconds) may be too short an
 sed -i 's/^TIMEOUT=.*/TIMEOUT=100/g' /usr/share/cryptsetup/initramfs/bin/cryptroot-unlock
 ```
 
-### SSH
-
-Write your SSH public key inside dropbear's and your decrypted OS's `authorized_keys` and fix permissions:
+Copy `xz` to the initramfs so kernel modules compressed as `.ko.xz` can be decompressed:
 
 ```sh
-mkdir -p /root/.ssh && chmod 0700 /root/.ssh
-echo "/REDACTED/" | tee /etc/dropbear/initramfs/authorized_keys /root/.ssh/authorized_keys
-chmod 0600 /etc/dropbear/initramfs/authorized_keys /root/.ssh/authorized_keys
+cat > /etc/initramfs-tools/hooks/xz << 'EOF'
+#!/bin/sh
+set -e
+
+PREREQ=""
+prereqs() { echo "$PREREQ"; }
+case "$1" in
+    prereqs) prereqs; exit 0 ;;
+esac
+
+. /usr/share/initramfs-tools/hook-functions
+
+copy_exec /usr/bin/xz
+copy_exec /usr/lib/*-linux-gnu/liblzma.so.*
+EOF
+chmod 0755 /etc/initramfs-tools/hooks/xz
+```
+
+### SSH
+
+Write your SSH public key inside Dropbear's initramfs `authorized_keys` and fix permissions. This key is only for the pre-boot SSH server used to unlock LUKS:
+
+```sh
+echo "/REDACTED/" > /etc/dropbear/initramfs/authorized_keys
+chmod 0600 /etc/dropbear/initramfs/authorized_keys
 ```
 
 ### WiFi support
@@ -233,28 +251,49 @@ Note your kernel version. If there are multiple, choose the one you want to run.
 ls /lib/modules/
 ```
 
-> [!NOTE]
-> Starting with the Raspberry Pi 5, the default kernel page size is 16K instead of 4K. This breaks some software, but more importantly, is experimental in btrfs with 4K sector size disks until kernel 6.15:
->
-> ```
-> BTRFS warning (device dm-1): read-write for sector size 4096 with page size 16384 is experimental
-> ```
->
-> For this reason, you may want to switch back to the old kernel by adding the following to your `/boot/firmware/config.txt`:
->
-> ```sh
-> echo "kernel=kernel8.img" >> /boot/firmware/config.txt
-> echo "initramfs initramfs8 followkernel" >> /boot/firmware/config.txt
-> ```
-
 Build the new initramdisk using the kernel version from above:
 
 ```sh
-kversion="6.12.47+rpt-rpi-v8" # "6.12.47+rpt-rpi-2712" for 16k pages
-mkinitramfs -o /boot/firmware/initramfs8 $kversion # "initramfs_2712" for 16K pages
+kversion="6.18.29+rpt-rpi-2712" # "6.18.29+rpt-rpi-v8" for 4K pages
+mkinitramfs -o /boot/firmware/initramfs_2712 $kversion # "initramfs8" for 4K pages
 ```
 
-Raspberry Pi OS now uses a combination of cloudinit and systemd services to run its basic bootstrapping code. If you want to make any changes there, look under `/etc/cloud/`. For advanced configuration, Raspberry Pi Imager still uses the old firstboot script. If you want to configure the user, SSH or WLAN, then create `/boot/firmware/firstrun.sh` and customize it for your needs:
+### Cloud-init
+
+Raspberry Pi OS now uses cloud-init for first-boot configuration. The image includes a NoCloud datasource configured in `/etc/cloud/cloud.cfg.d/99_raspberry-pi.cfg`, seeded from `/boot/firmware/`. For a non-interactive default user and key-only SSH login, edit `/boot/firmware/user-data`.
+
+For example, this creates a `pi` user with sudo access, no usable password, and SSH key-only login. Replace `/REDACTED/` with your SSH public key:
+
+```yaml
+#cloud-config
+
+hostname: pi-server
+ssh_pwauth: false
+disable_root: true
+
+users:
+  - name: pi
+    gecos: Raspberry Pi
+    groups: [adm, dialout, cdrom, audio, users, sudo, video, games, plugdev, input, gpio, spi, i2c, netdev, render, lpadmin]
+    sudo: ["ALL=(ALL) NOPASSWD:ALL"]
+    shell: /bin/bash
+    lock_passwd: true
+    ssh_authorized_keys:
+      - /REDACTED/
+
+runcmd:
+  - [ systemctl, enable, --now, ssh.service ]
+```
+
+You can validate the file from inside the chroot:
+
+```sh
+cloud-init schema --config-file /boot/firmware/user-data
+```
+
+### Legacy first-run
+
+Raspberry Pi Imager's legacy first-run helper is still available for advanced cases that cloud-init does not cover. If needed, create `/boot/firmware/firstrun.sh`, for example:
 
 ```sh
 #!/bin/bash
@@ -321,11 +360,6 @@ You are now ready to flash `pi-target.img` to an SD card.
 ## On the Raspberry Pi
 
 Boot the Raspberry Pi with the new SD card. It will obtain an IP address from the DHCP server and start listening for SSH connections. To decrypt the root partition and continue boot, from any shell, simply run `cryptroot-unlock`.
-
-The first time only:
-
-1. Once decrypted, the system will power off. The reason for this is currently unknown. Restart the device and decrypt again.
-2. The decrypted system will run the init script from before and reboot back into the initramfs. Proceed to decrypt one last time.
 
 Once booted into the decrypted system, you will notice that the root partition is still sized at ~3GB, no matter how much space you have on the SD card. To fix this, resize the partition:
 
