@@ -6,7 +6,7 @@
 
 ## Introduction
 
-This guide will show you how to encrypt your Raspberry Pi's root partition and set up an [initramfs](https://en.wikipedia.org/wiki/Initial_ramdisk) that will prompt for the password, decrypt the partition and gracefully resume boot. You will also learn how to enable SSH during this pre-boot stage, allowing you to unlock the partition remotely. There are also optional steps for WiFi setup.
+This guide will show you how to encrypt your Raspberry Pi's root partition and set up an [initramfs](https://en.wikipedia.org/wiki/Initial_ramdisk) that will prompt for the password, decrypt the partition and gracefully resume boot. You will also learn how to enable SSH during this pre-boot stage, allowing you to unlock the partition remotely. There are optional steps for WiFi and [Tailscale](https://tailscale.com/) support, so the pre-boot SSH server can be reached without exposing it to the public internet.
 
 This guide operates directly on an image file and therefore does not require an SD card for the setup. The resulting image can be flashed to an SD card as usual.
 
@@ -229,6 +229,12 @@ echo "/REDACTED/" > /etc/dropbear/initramfs/authorized_keys
 chmod 0600 /etc/dropbear/initramfs/authorized_keys
 ```
 
+### Tailscale support
+
+This step is optional. If you want the Raspberry Pi to be decryptable over your tailnet, follow the dedicated guide:
+
+- [Tailscale.md](Tailscale.md)
+
 ### WiFi support
 
 This step is optional. If you want the Raspberry Pi to be decryptable over WiFi, check out the guides below. Note that the differences between distros is very small, so you can easily adapt any particular guide.
@@ -359,7 +365,11 @@ You are now ready to flash `pi-target.img` to an SD card.
 
 ## On the Raspberry Pi
 
-Boot the Raspberry Pi with the new SD card. It will obtain an IP address from the DHCP server and start listening for SSH connections. To decrypt the root partition and continue boot, from any shell, simply run `cryptroot-unlock`.
+Boot the Raspberry Pi with the new SD card. It will obtain an IP address from the DHCP server and start listening for SSH connections. To decrypt the root partition and continue boot, from the SSH shell, simply run:
+
+```sh
+cryptroot-unlock
+```
 
 Once booted into the decrypted system, you will notice that the root partition is still sized at ~3GB, no matter how much space you have on the SD card. To fix this, resize the partition:
 
