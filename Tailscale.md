@@ -131,9 +131,9 @@ EOF
 chmod 0755 /etc/initramfs-tools/hooks/tailscale
 ```
 
-Start Tailscale after Dropbear has initiated the normal initramfs network configuration. Use `1.1.1.1` in the initramfs, then synchronize the clock before starting the daemon. The hook overrides the resolver writer inside the generated image because Dropbear runs DHCP in the background; a late DHCP response must also use `1.1.1.1`. The enrolled identity already has `--accept-dns=false`, so Tailscale will leave this resolver in place. The decrypted OS keeps its own DNS configuration.
+Start Tailscale after Dropbear has initiated the normal initramfs network configuration. Use `1.1.1.1` in the initramfs and synchronize the clock in the background while the daemon starts. The hook overrides the resolver writer inside the generated image because Dropbear runs DHCP in the background; a late DHCP response must also use `1.1.1.1`. The enrolled identity already has `--accept-dns=false`, so Tailscale will leave this resolver in place. The decrypted OS keeps its own DNS configuration.
 
-The SNTP requests use [Cloudflare's numeric NTP addresses](https://developers.cloudflare.com/time-services/ntp/usage/), so clock synchronization needs neither DNS nor HTTPS. The numeric port `-o 123` also avoids requiring `/etc/services` in the initramfs. [`rdate -n`](https://manpages.debian.org/trixie/rdate/rdate.8.en.html) sets the clock immediately, including when it has reset to 1970. Each attempt is limited to 10 seconds, with three passes over two servers to allow for delayed connectivity. If all attempts fail, boot continues with a warning; LAN SSH and console unlock remain available, but Tailscale may remain offline until the clock is corrected. The network must allow DNS to `1.1.1.1` and outbound NTP (UDP port 123).
+The SNTP requests use [Cloudflare's numeric NTP addresses](https://developers.cloudflare.com/time-services/ntp/usage/), so clock synchronization needs neither DNS nor HTTPS. The numeric port `-o 123` also avoids requiring `/etc/services` in the initramfs. [`rdate -n`](https://manpages.debian.org/trixie/rdate/rdate.8.en.html) sets the clock immediately, including when it has reset to 1970. Because Dropbear configures the network in the background, the hook cannot sync the clock up front: `rdate` would fail immediately with "Network is unreachable" before DHCP finishes. Instead, a background loop waits for a default route and retries both servers until one succeeds, with each attempt limited to 10 seconds. Tailscale starts straight away and retries its control connection, so it connects once the clock is correct. Boot is never blocked; LAN SSH and console unlock remain available while the network comes up, and the loop is stopped before switching to the decrypted root. The network must allow DNS to `1.1.1.1` and outbound NTP (UDP port 123).
 
 ```sh
 cat > /etc/initramfs-tools/scripts/init-premount/tailscale << 'EOF'
@@ -151,24 +151,26 @@ rm -f /etc/resolv.conf
 printf 'nameserver 1.1.1.1\n' >/etc/resolv.conf
 
 mkdir -p /run/tailscale
-echo "Synchronizing initramfs clock..."
-time_synced=false
-for attempt in 1 2 3; do
-    for server in 162.159.200.1 162.159.200.123; do
-        echo "SNTP attempt $attempt: $server" >>/run/tailscale/ntp.log
-        if /bin/busybox timeout -k 1 10 \
-            /usr/lib/tailscale-initramfs/rdate -n -4 -o 123 "$server" >>/run/tailscale/ntp.log 2>&1; then
-            time_synced=true
-            break
+# Dropbear configures the network in the background, so wait for a default
+# route and keep retrying; tailscaled reconnects once the clock is correct.
+(
+    attempt=0
+    while :; do
+        if ip route | grep -q '^default'; then
+            attempt=$((attempt + 1))
+            for server in 162.159.200.1 162.159.200.123; do
+                echo "SNTP attempt $attempt: $server" >>/run/tailscale/ntp.log
+                if /bin/busybox timeout -k 1 10 \
+                    /usr/lib/tailscale-initramfs/rdate -n -4 -o 123 "$server" >>/run/tailscale/ntp.log 2>&1; then
+                    echo "Initramfs clock synchronized." >>/run/tailscale/ntp.log
+                    exit 0
+                fi
+            done
         fi
+        sleep 2
     done
-    [ "$time_synced" = true ] && break
-done
-if [ "$time_synced" = true ]; then
-    echo "Initramfs clock synchronized."
-else
-    echo "tailscale: time sync failed; see /run/tailscale/ntp.log; LAN/console unlock is still available" >&2
-fi
+) &
+echo $! >/run/tailscale/ntp.pid
 
 modprobe tun || echo "tailscale: could not load tun module" >&2
 mkdir -p /dev/net /run/tailscale /var/lib/tailscale
@@ -199,6 +201,10 @@ prereqs() { echo "$PREREQ"; }
 case "$1" in
     prereqs) prereqs; exit 0 ;;
 esac
+
+if [ -r /run/tailscale/ntp.pid ]; then
+    kill "$(cat /run/tailscale/ntp.pid)" 2>/dev/null || true
+fi
 
 if [ -r /run/tailscale/tailscaled.pid ]; then
     pid="$(cat /run/tailscale/tailscaled.pid)"
